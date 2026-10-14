@@ -35,49 +35,15 @@ class User(AbstractUser):
         default=0, 
         verbose_name="Solde Portefeuille"
     )
+    active_session_key = models.CharField(
+        max_length=40,
+        blank=True,
+        default="",
+        verbose_name="Clé de session active"
+    )
 
     def __str__(self):
         return self.username
-
-# ---- GESTION DES SESSIONS MULTIPLES ----
-from django.contrib.sessions.models import Session
-from django.utils import timezone
-from django.contrib.auth.signals import user_logged_in
-from django.dispatch import receiver
-
-@receiver(user_logged_in)
-def remove_other_sessions(sender, user, request, **kwargs):
-    """
-    Empêche un utilisateur d'être connecté sur plusieurs appareils en même temps.
-    Lorsqu'il se connecte, toutes ses anciennes sessions sont supprimées.
-    """
-    # Si la session n'est pas encore sauvegardée, on s'assure qu'elle l'est
-    if not request.session.session_key:
-        request.session.create()
-        
-    current_session_key = request.session.session_key
-    
-    # Parcourir toutes les sessions actives dans la base de données
-    for session in Session.objects.filter(expire_date__gte=timezone.now()):
-        data = session.get_decoded()
-        # Vérifier si la session appartient à l'utilisateur qui vient de se connecter
-        if str(data.get('_auth_user_id', '')) == str(user.id):
-            # Si ce n'est pas la session actuelle, on modifie la session pour déconnecter l'utilisateur
-            if session.session_key != current_session_key:
-                # Retirer l'utilisateur de la session (déconnexion)
-                if '_auth_user_id' in data:
-                    del data['_auth_user_id']
-                if '_auth_user_backend' in data:
-                    del data['_auth_user_backend']
-                if '_auth_user_hash' in data:
-                    del data['_auth_user_hash']
-                
-                # Ajouter un marqueur pour indiquer qu'il a été expulsé
-                data['kicked_out'] = True
-                
-                # Enregistrer la session modifiée
-                session.session_data = Session.objects.encode(data)
-                session.save()
 
 
 class SystemAlert(models.Model):

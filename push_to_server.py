@@ -2,6 +2,7 @@ import os
 import tarfile
 import paramiko
 import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Charger les variables d'environnement depuis le fichier .env
@@ -14,7 +15,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 HOST = os.environ.get("SERVER_IP", "169.58.52.142")
 USER = os.environ.get("SERVER_USER", "root")
 PWD = os.environ.get("SERVER_PASSWORD")
-LOCAL_DIR = r"c:\Users\mouah\Desktop\Ms logitech1+"
+LOCAL_DIR = str(Path(__file__).resolve().parent)
 
 if not PWD:
     print("Erreur : Le mot de passe du serveur (SERVER_PASSWORD) n'est pas défini dans le fichier .env !")

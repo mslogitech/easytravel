@@ -198,16 +198,25 @@ def book_departure(request, departure_id):
                 total_to_pay = segment_price * seats
 
                 # Si l'utilisateur est authentifié et choisit de régler avec son portefeuille
-                if payment_choice == 'wallet' and user and hasattr(user, 'wallet_balance') and user.wallet_balance >= total_to_pay:
+                if payment_choice == 'wallet' and user and hasattr(user, 'wallet_balance'):
+                    from accounts.models import User as AccountUser
+                    db_user = AccountUser.objects.select_for_update().get(id=user.id)
+                    if db_user.wallet_balance < total_to_pay:
+                        raise ValidationError(
+                            f"Solde insuffisant sur votre Portefeuille ({int(db_user.wallet_balance):,} FCFA). "
+                            f"Montant requis : {int(total_to_pay):,} FCFA."
+                        )
+                    
                     import uuid
                     import threading
                     from django.utils import timezone
                     
-                    user.wallet_balance -= total_to_pay
-                    user.save(update_fields=['wallet_balance'])
+                    db_user.wallet_balance -= total_to_pay
+                    db_user.save(update_fields=['wallet_balance'])
+                    user.wallet_balance = db_user.wallet_balance
                     
                     booking = Booking.objects.create(
-                        user=user,
+                        user=db_user,
                         departure=departure,
                         departure_stop=start_stop,
                         arrival_stop=end_stop,

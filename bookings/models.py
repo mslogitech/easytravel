@@ -102,16 +102,19 @@ class Booking(models.Model):
         """
         Génère une signature cryptographique HMAC-SHA256 unique et inviolable pour le billet.
         Basée sur les identifiants clés et immuables de la réservation.
+        Utilise TICKET_SIGNING_KEY (découplée de SECRET_KEY).
         """
         import hmac
         import hashlib
+        ticket_key = getattr(settings, 'TICKET_SIGNING_KEY', settings.SECRET_KEY).encode()
         payload = f"EASYTRAVEL:{self.reference}:{self.pk}:{self.seats_reserved}"
-        return hmac.new(settings.SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
+        return hmac.new(ticket_key, payload.encode(), hashlib.sha256).hexdigest()[:16]
 
     def verify_security_signature(self, signature):
         """
         Vérifie si la signature fournie correspond à ce billet.
         Prend en charge la signature sécurisée actuelle et le format de compatibilité rétroactif.
+        Supporte à la fois TICKET_SIGNING_KEY et SECRET_KEY (pour les anciens billets physiques).
         """
         import hmac
         import hashlib
@@ -122,14 +125,29 @@ class Booking(models.Model):
         if hmac.compare_digest(str(signature).lower(), expected.lower()):
             return True
             
+        # Si TICKET_SIGNING_KEY est différent de SECRET_KEY, vérifier aussi avec SECRET_KEY (anciens billets émis)
+        sec_key = getattr(settings, 'SECRET_KEY', '').encode()
+        ticket_key = getattr(settings, 'TICKET_SIGNING_KEY', settings.SECRET_KEY).encode()
+        if sec_key and sec_key != ticket_key:
+            payload = f"EASYTRAVEL:{self.reference}:{self.pk}:{self.seats_reserved}"
+            expected_sec = hmac.new(sec_key, payload.encode(), hashlib.sha256).hexdigest()[:16]
+            if hmac.compare_digest(str(signature).lower(), expected_sec.lower()):
+                return True
+
         # Rétrocompatibilité avec l'ancien format legacy
         try:
             start_city = self.departure_stop.city.name if self.departure_stop and self.departure_stop.city else "Départ"
             end_city = self.arrival_stop.city.name if self.arrival_stop and self.arrival_stop.city else "Arrivée"
             dep_date = self.departure.date if self.departure else ""
             legacy_payload = f"REF:{self.reference}|NOM:{self.traveler_name}|PIECE:{self.id_type}-{self.id_number}|TRAJET:{start_city}-{end_city}|DATE:{dep_date}|PLACES:{self.seats_reserved}"
-            legacy_sig = hmac.new(settings.SECRET_KEY.encode(), legacy_payload.encode(), hashlib.sha256).hexdigest()[:12]
-            return hmac.compare_digest(str(signature).lower(), legacy_sig.lower())
+            legacy_sig1 = hmac.new(ticket_key, legacy_payload.encode(), hashlib.sha256).hexdigest()[:12]
+            if hmac.compare_digest(str(signature).lower(), legacy_sig1.lower()):
+                return True
+            if sec_key and sec_key != ticket_key:
+                legacy_sig2 = hmac.new(sec_key, legacy_payload.encode(), hashlib.sha256).hexdigest()[:12]
+                if hmac.compare_digest(str(signature).lower(), legacy_sig2.lower()):
+                    return True
+            return False
         except Exception:
             return False
 

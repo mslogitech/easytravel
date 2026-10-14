@@ -27,6 +27,9 @@ if not SECRET_KEY:
         from django.core.exceptions import ImproperlyConfigured
         raise ImproperlyConfigured("DJANGO_SECRET_KEY est obligatoire en production.")
 
+# Clé dédiée pour signature HMAC et vérification QR code des billets (découplée de SECRET_KEY)
+TICKET_SIGNING_KEY = os.getenv('TICKET_SIGNING_KEY', '').strip() or SECRET_KEY
+
 hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver,easytravel.cm,www.easytravel.cm,169.58.52.142')
 ALLOWED_HOSTS = [h.strip() for h in hosts_env.split(',') if h.strip()]
 for h in ['easytravel.cm', 'www.easytravel.cm', '169.58.52.142', 'easytravel.mslogitech.com']:
