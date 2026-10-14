@@ -1,5 +1,6 @@
 {% extends 'travel/base.html' %}
 {% load static %}
+{% load agency_extras %}
 
 {% block title %}Réservez vos tickets de bus au Cameroun - EasyTravel{% endblock %}
 
@@ -513,87 +514,26 @@
         </div>
 
         <div class="row g-3 g-md-4">
-            
-            <!-- Carte Douala -> Yaoundé -->
+            {% for route in popular_routes %}
             <div class="col-md-6 col-lg-3">
                 <div class="route-card">
                     <div>
-                        <span class="badge bg-primary bg-opacity-10 text-primary fw-bold rounded-pill mb-2 px-2.5 py-1 small">Axe Lourd N°3</span>
-                        <h5 class="fw-bold text-dark mb-1">Douala ➔ Yaoundé</h5>
-                        <p class="text-muted small mb-3">Départs fréquents toutes les 30 minutes</p>
+                        <span class="badge {{ route.badge_class }} fw-bold rounded-pill mb-2 px-2.5 py-1 small">{{ route.tag }}</span>
+                        <h5 class="fw-bold text-dark mb-1">{{ route.from_name }} ➔ {{ route.to_name }}</h5>
+                        <p class="text-muted small mb-3">{{ route.desc }}</p>
                     </div>
                     <div>
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <span class="text-muted small">À partir de</span>
-                            <strong class="text-primary fs-5">3 500 FCFA</strong>
+                            <strong class="text-primary fs-5">{{ route.starting_price|format_money }} FCFA</strong>
                         </div>
-                        <a href="{% url 'travel:search' %}?date={{ today_str }}" class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-2">
+                        <a href="{% url 'travel:search' %}?{% if route.dep_city_id and route.arr_city_id %}departure_city={{ route.dep_city_id }}&arrival_city={{ route.arr_city_id }}&{% endif %}date={{ today_str }}" class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-2">
                             Voir les départs
                         </a>
                     </div>
                 </div>
             </div>
-
-            <!-- Carte Yaoundé -> Bafoussam -->
-            <div class="col-md-6 col-lg-3">
-                <div class="route-card">
-                    <div>
-                        <span class="badge bg-success bg-opacity-10 text-success fw-bold rounded-pill mb-2 px-2.5 py-1 small">Région Ouest</span>
-                        <h5 class="fw-bold text-dark mb-1">Yaoundé ➔ Bafoussam</h5>
-                        <p class="text-muted small mb-3">Bus VIP climatisés grand confort</p>
-                    </div>
-                    <div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="text-muted small">À partir de</span>
-                            <strong class="text-primary fs-5">4 000 FCFA</strong>
-                        </div>
-                        <a href="{% url 'travel:search' %}?date={{ today_str }}" class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-2">
-                            Voir les départs
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Carte Douala -> Kribi -->
-            <div class="col-md-6 col-lg-3">
-                <div class="route-card">
-                    <div>
-                        <span class="badge bg-warning bg-opacity-15 text-dark fw-bold rounded-pill mb-2 px-2.5 py-1 small">Côte Atlantique</span>
-                        <h5 class="fw-bold text-dark mb-1">Douala ➔ Kribi</h5>
-                        <p class="text-muted small mb-3">Trajet balnéaire rapide et fluide</p>
-                    </div>
-                    <div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="text-muted small">À partir de</span>
-                            <strong class="text-primary fs-5">3 000 FCFA</strong>
-                        </div>
-                        <a href="{% url 'travel:search' %}?date={{ today_str }}" class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-2">
-                            Voir les départs
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Carte Yaoundé -> Ngaoundéré -->
-            <div class="col-md-6 col-lg-3">
-                <div class="route-card">
-                    <div>
-                        <span class="badge bg-info bg-opacity-10 text-info fw-bold rounded-pill mb-2 px-2.5 py-1 small">Grand Nord</span>
-                        <h5 class="fw-bold text-dark mb-1">Yaoundé ➔ Ngaoundéré</h5>
-                        <p class="text-muted small mb-3">Départs de nuit et couchettes</p>
-                    </div>
-                    <div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="text-muted small">À partir de</span>
-                            <strong class="text-primary fs-5">8 500 FCFA</strong>
-                        </div>
-                        <a href="{% url 'travel:search' %}?date={{ today_str }}" class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-2">
-                            Voir les départs
-                        </a>
-                    </div>
-                </div>
-            </div>
-
+            {% endfor %}
         </div>
     </div>
 </section>

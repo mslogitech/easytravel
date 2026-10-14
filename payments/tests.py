@@ -13,6 +13,7 @@ from agencies.models import Agency
 from travel.models import City, Line, LineStop, Departure
 from bookings.models import Booking
 from payments.services.cinetpay import CinetPayService
+from payments.services.saspay import SasPayService
 
 
 class CinetPayPaymentTests(TestCase):
@@ -136,15 +137,15 @@ class CinetPayPaymentTests(TestCase):
         self.assertEqual(self.booking.payment_operator, 'ORANGE_MONEY_CMR')
         self.assertIsNotNone(self.booking.paid_at)
 
-    @patch.object(CinetPayService, 'is_configured', return_value=True)
-    @patch.object(CinetPayService, 'initiate_payment')
+    @patch.object(SasPayService, 'is_configured', return_value=True)
+    @patch.object(SasPayService, 'initiate_payment')
     def test_view_initiate_booking_payment_redirects_to_cinetpay(self, mock_initiate, mock_configured):
-        """When simulation mode is disabled, view initiates payment and redirects user to CinetPay payment URL."""
+        """When simulation mode is disabled, view initiates payment and redirects user to live payment URL."""
         from django.test import override_settings
         with override_settings(PAYMENT_SIMULATION_MODE=False):
             mock_initiate.return_value = (
                 True, 
-                {"payment_url": "https://checkout.cinetpay.com/pay/xyz789"}, 
+                {"payment_url": "https://checkout.saspay.me/pay/xyz789"}, 
                 "ET-TX-1-ABCD"
             )
             self.client.login(username='voyageur_test', password='secretpassword123')
@@ -152,7 +153,7 @@ class CinetPayPaymentTests(TestCase):
             response = self.client.get(url)
 
             self.assertEqual(response.status_code, 302)
-            self.assertEqual(response.url, "https://checkout.cinetpay.com/pay/xyz789")
+            self.assertEqual(response.url, "https://checkout.saspay.me/pay/xyz789")
 
     @override_settings(PAYMENT_SIMULATION_MODE=True)
     def test_view_initiate_redirects_to_simulation(self):
@@ -214,25 +215,41 @@ class CinetPayPaymentTests(TestCase):
         self.booking.refresh_from_db()
         self.assertEqual(self.booking.payment_status, 'failed')
 
-    @patch.object(CinetPayService, 'verify_and_update_booking')
-    def test_view_cinetpay_notification_ipn_webhook(self, mock_verify):
-        """Validates that CinetPay IPN webhook triggers verification and returns 200."""
-        mock_verify.return_value = (True, self.booking, "Paiement validé avec succès.")
+    @patch.object(SasPayService, 'verify_webhook_signature', return_value=True)
+    @patch.object(SasPayService, 'verify_and_update_booking_webhook')
+    def test_view_cinetpay_notification_ipn_webhook(self, mock_update, mock_sig):
+        """Validates that SasPay IPN webhook triggers verification and returns 200."""
+        import json
+        mock_update.return_value = (True, self.booking, "Paiement validé avec succès.")
         url = reverse('payments:notification')
 
-        # CinetPay IPN sends POST with cpm_trans_id
-        response = self.client.post(url, data={'cpm_trans_id': 'ET-TX-TEST-IPN'})
+        payload = {
+            'event': 'transaction.success',
+            'data': {
+                'transaction_id': 'ET-TX-TEST-IPN',
+                'status': 'SUCCESS',
+                'metadata': {'project': 'easytravel'}
+            }
+        }
+        response = self.client.post(
+            url, 
+            data=json.dumps(payload), 
+            content_type='application/json',
+            HTTP_X_WEBHOOK_SIGNATURE='valid_sig',
+            HTTP_X_WEBHOOK_TIMESTAMP='1700000000'
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['status'], 'success')
-        mock_verify.assert_called_once_with('ET-TX-TEST-IPN')
 
-    @patch.object(CinetPayService, 'verify_and_update_booking')
-    def test_view_cinetpay_return_redirects_to_confirmation(self, mock_verify):
-        """User returning from CinetPay is safely redirected to booking confirmation page."""
+    @patch.object(SasPayService, 'verify_payment')
+    @patch.object(SasPayService, 'verify_and_update_booking_webhook')
+    def test_view_cinetpay_return_redirects_to_confirmation(self, mock_update, mock_verify):
+        """User returning from SasPay is safely redirected to booking confirmation page."""
         self.booking.payment_status = 'paid'
         self.booking.save()
-        mock_verify.return_value = (True, self.booking, "Paiement validé avec succès.")
+        mock_verify.return_value = (True, {'transaction_id': 'ET-TX-RETURN-1', 'status': 'SUCCESS'})
+        mock_update.return_value = (True, self.booking, "Paiement validé avec succès.")
 
         url = f"{reverse('payments:return')}?transaction_id=ET-TX-RETURN-1"
         response = self.client.get(url)

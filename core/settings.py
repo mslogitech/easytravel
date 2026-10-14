@@ -228,9 +228,9 @@ CAMPAY_APP_PASSWORD = os.getenv('CAMPAY_APP_PASSWORD', '')
 CAMPAY_ENVIRONMENT = os.getenv('CAMPAY_ENVIRONMENT', 'sandbox')
 
 # SasPay Configuration
-SASPAY_API_KEY = os.getenv('SASPAY_API_KEY', '')
-SASPAY_WEBHOOK_SECRET = os.getenv('SASPAY_WEBHOOK_SECRET', '')
-SASPAY_PROJECT_ID = os.getenv('SASPAY_PROJECT_ID', 'easytravel')
+SASPAY_API_KEY = os.getenv('SASPAY_API_KEY', '').strip()
+SASPAY_WEBHOOK_SECRET = os.getenv('SASPAY_WEBHOOK_SECRET', '').strip()
+SASPAY_PROJECT_ID = os.getenv('SASPAY_PROJECT_ID', 'easytravel').strip()
 
 # Payment Simulation & Sandbox Mode (True by default for tests & demo)
 PAYMENT_SIMULATION_MODE = DEBUG and os.getenv('PAYMENT_SIMULATION_MODE', 'False').lower() in ('true', '1', 't', 'yes')

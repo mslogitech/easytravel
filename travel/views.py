@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from django.shortcuts import render
 from django.utils import timezone
-from .models import City, Departure, LineStop
+from .models import City, Departure, LineStop, Line
 from agencies.models import Agency
 
 FRENCH_DAYS_SHORT = ['Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.']
@@ -26,10 +26,105 @@ def home(request):
     cities = City.objects.filter(is_active=True).order_by('name')
     today_str = timezone.localtime().date().strftime('%Y-%m-%d')
     partner_agencies = Agency.objects.filter(status='active').order_by('name')
+    
+    # Configuration des 4 axes majeurs au Cameroun
+    popular_routes_config = [
+        {
+            'from': 'Douala', 
+            'to': 'Yaoundé', 
+            'tag': 'Axe Lourd N°3', 
+            'desc': 'Départs fréquents toutes les 30 minutes',
+            'badge_class': 'bg-primary bg-opacity-10 text-primary'
+        },
+        {
+            'from': 'Yaoundé', 
+            'to': 'Bafoussam', 
+            'tag': 'Région Ouest', 
+            'desc': 'Bus VIP climatisés grand confort',
+            'badge_class': 'bg-success bg-opacity-10 text-success'
+        },
+        {
+            'from': 'Douala', 
+            'to': 'Kribi', 
+            'tag': 'Côte Atlantique', 
+            'desc': 'Trajet balnéaire rapide et fluide',
+            'badge_class': 'bg-warning bg-opacity-15 text-dark'
+        },
+        {
+            'from': 'Yaoundé', 
+            'to': 'Ngaoundéré', 
+            'tag': 'Grand Nord', 
+            'desc': 'Départs de nuit et couchettes',
+            'badge_class': 'bg-info bg-opacity-10 text-info'
+        },
+    ]
+
+    import unicodedata
+    def norm(s):
+        if not s: return ''
+        return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn').lower().strip()
+
+    city_map = {norm(c.name): c for c in cities}
+    active_lines = list(Line.objects.all().prefetch_related('stops__city', 'agency'))
+    line_map = {}
+    for l in active_lines:
+        dep_c = l.departure_city
+        arr_c = l.arrival_city
+        if dep_c and arr_c:
+            line_map[(norm(dep_c.name), norm(arr_c.name))] = l
+
+    today = timezone.localtime().date()
+    departures = list(
+        Departure.objects.filter(status__in=['scheduled', 'boarding'], date__gte=today)
+        .select_related('line', 'agency')
+    )
+
+    departures_by_line = {}
+    for d in departures:
+        departures_by_line.setdefault(d.line_id, []).append(d)
+
+    popular_routes = []
+    for r in popular_routes_config:
+        from_name = r['from']
+        to_name = r['to']
+        dep_c = city_map.get(norm(from_name))
+        arr_c = city_map.get(norm(to_name))
+        
+        line = line_map.get((norm(from_name), norm(to_name)))
+        
+        starting_price = None
+        if line and line.id in departures_by_line:
+            for dep in departures_by_line[line.id]:
+                pricing = dep.calculate_pricing()
+                tot = pricing['total_price']
+                if starting_price is None or tot < starting_price:
+                    starting_price = tot
+        elif line and line.base_price > 0:
+            fee_pct = 0.03
+            if hasattr(line, 'agency') and line.agency and hasattr(line.agency, 'platform_fee_percentage'):
+                fee_pct = float(line.agency.platform_fee_percentage) / 100.0
+            starting_price = float(line.base_price) * (1.0 + fee_pct)
+        
+        if starting_price is None:
+            defaults = {'Douala-Yaoundé': 5150, 'Yaoundé-Bafoussam': 4000, 'Douala-Kribi': 3500, 'Yaoundé-Ngaoundéré': 8500}
+            starting_price = defaults.get(f"{from_name}-{to_name}", 5000)
+
+        popular_routes.append({
+            'from_name': from_name,
+            'to_name': to_name,
+            'tag': r['tag'],
+            'desc': r['desc'],
+            'badge_class': r['badge_class'],
+            'dep_city_id': dep_c.id if dep_c else '',
+            'arr_city_id': arr_c.id if arr_c else '',
+            'starting_price': int(round(starting_price)),
+        })
+
     return render(request, 'travel/home.html', {
         'cities': cities,
         'today_str': today_str,
         'partner_agencies': partner_agencies,
+        'popular_routes': popular_routes,
     })
 
 def search(request):

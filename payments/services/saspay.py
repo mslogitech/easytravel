@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 
 class SasPayService:
     def __init__(self):
-        self.api_key = getattr(settings, 'SASPAY_API_KEY', '')
-        self.webhook_secret = getattr(settings, 'SASPAY_WEBHOOK_SECRET', '')
-        self.base_url = "https://api.saspay.me/api/v1"
+        self.api_key = getattr(settings, 'SASPAY_API_KEY', '').strip()
+        self.webhook_secret = getattr(settings, 'SASPAY_WEBHOOK_SECRET', '').strip()
+        self.base_url = getattr(settings, 'SASPAY_BASE_URL', 'https://api.saspay.me/api/v1').strip().rstrip('/')
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -23,12 +23,15 @@ class SasPayService:
 
     def initiate_payment(self, cart=None, booking=None, return_url=None, notify_url=None):
         import uuid
+        import re
         
         if cart:
+            first_booking = cart.bookings.first()
+            if not first_booking:
+                return False, {"message": "Le panier ne contient aucune réservation."}, ""
             tx_id = f"ET-CRT-{cart.reference}-{uuid.uuid4().hex[:4].upper()}"
             cart.transaction_id = tx_id
             cart.save(update_fields=['transaction_id'])
-            first_booking = cart.bookings.first()
             amount = float(cart.total_amount)
             description = f"Panier EasyTravel Ref {cart.reference}"
             cart.bookings.update(transaction_id=tx_id, payment_operator="saspay")
@@ -43,8 +46,24 @@ class SasPayService:
         else:
             return False, {"message": "Aucune réservation fournie."}, ""
 
-        customer_name = (first_booking.traveler_name or "Passager").strip()
-        customer_email = getattr(first_booking.user, 'email', '') if first_booking.user else "no-reply@easytravel.cm"
+        customer_name = (getattr(first_booking, 'traveler_name', '') or "Passager").strip()
+        customer_email = getattr(first_booking.user, 'email', '') if (first_booking and first_booking.user) else "no-reply@easytravel.cm"
+
+        # Extraction et nettoyage du numéro de téléphone camerounais au format international (+2376XXXXXXXX)
+        raw_phone = (
+            getattr(first_booking, 'traveler_phone', '') 
+            or (first_booking.user.phone if first_booking.user else '') 
+            or ''
+        ).strip()
+        clean_digits = re.sub(r'\D', '', raw_phone)
+        if clean_digits.startswith('237') and len(clean_digits) == 12:
+            formatted_phone = f"+{clean_digits}"
+        elif len(clean_digits) == 9:
+            formatted_phone = f"+237{clean_digits}"
+        elif clean_digits:
+            formatted_phone = f"+{clean_digits}"
+        else:
+            formatted_phone = ""
 
         success, result = self.create_checkout_session(
             transaction_id=tx_id,
@@ -53,6 +72,8 @@ class SasPayService:
             description=description,
             customer_name=customer_name,
             customer_email=customer_email,
+            customer_phone=formatted_phone,
+            country="CM",
             return_url=return_url
         )
         
@@ -62,22 +83,38 @@ class SasPayService:
         
         return False, result, tx_id
 
-    def create_checkout_session(self, transaction_id, amount, currency, description, customer_name, customer_email, return_url):
+    def create_checkout_session(
+        self,
+        transaction_id,
+        amount,
+        currency,
+        description,
+        customer_name,
+        customer_email,
+        return_url,
+        customer_phone="",
+        country="CM",
+        fee_charge_mode="DEDUCTED"
+    ):
         # Format the amount to string with 2 decimal places as required by SasPay API
         formatted_amount = f"{float(amount):.2f}"
         
         payload = {
             "amount": formatted_amount,
             "currency": currency,
+            "country": country,
             "description": description,
             "customer_name": customer_name,
             "customer_email": customer_email,
             "return_url": return_url,
+            "fee_charge_mode": fee_charge_mode,
             "metadata": {
                 "transaction_id": transaction_id,
-                "project": getattr(settings, 'SASPAY_PROJECT_ID', 'easytravel')
+                "project": getattr(settings, 'SASPAY_PROJECT_ID', 'easytravel').strip()
             }
         }
+        if customer_phone:
+            payload["customer_phone"] = customer_phone
         
         try:
             url = f"{self.base_url}/checkout-sessions/"
@@ -100,12 +137,18 @@ class SasPayService:
         try:
             url = f"{self.base_url}/payments/{payment_id}/verify/"
             resp = requests.get(url, headers=self.headers, timeout=20)
-            data = resp.json()
+            try:
+                data = resp.json()
+            except Exception:
+                data = {"raw_text": resp.text}
             if resp.status_code == 200:
-                return True, data.get('data', {}) if 'data' in data else data
+                return True, data.get('data', {}) if isinstance(data, dict) and 'data' in data else data
             return False, data
         except requests.exceptions.RequestException as e:
             logger.exception("Erreur vérification SasPay")
+            return False, {"message": str(e)}
+        except Exception as e:
+            logger.exception("Exception inattendue vérification SasPay")
             return False, {"message": str(e)}
 
     def verify_webhook_signature(self, raw_body: bytes, signature: str, timestamp: str) -> bool:
