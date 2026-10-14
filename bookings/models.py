@@ -16,6 +16,27 @@ class BookingCart(models.Model):
             self.reference = f"CRT-{uuid.uuid4().hex[:6].upper()}"
         super().save(*args, **kwargs)
 
+def normalize_id_type(val):
+    """
+    Normalise de façon robuste les types de pièces d'identité
+    vers les valeurs canoniques ('CNI', 'PASSPORT', 'RECEIPT', 'STUDENT', 'OTHER').
+    Garantit la compatibilité ascendante avec les anciennes valeurs minuscules.
+    """
+    if not val:
+        return 'OTHER'
+    val_str = str(val).strip().upper()
+    mapping = {
+        'CNI': 'CNI',
+        'PASSPORT': 'PASSPORT',
+        'RECEIPT': 'RECEIPT',
+        'STUDENT': 'STUDENT',
+        'OTHER': 'OTHER',
+        'SCHOOL_CARD': 'STUDENT',
+        'NONE': 'OTHER',
+    }
+    return mapping.get(val_str, 'OTHER')
+
+
 class Booking(models.Model):
     STATUS_CHOICES = (
         ('pending', 'En attente'),
@@ -24,11 +45,18 @@ class Booking(models.Model):
         ('cancelled', 'Annulée'),
     )
     ID_TYPE_CHOICES = (
+        ('CNI', "Carte Nationale d'Identité (CNI)"),
+        ('PASSPORT', "Passeport"),
+        ('RECEIPT', "Récépissé de CNI"),
+        ('STUDENT', "Carte d'étudiant / d'élève"),
+        ('OTHER', "Autre (Aucune pièce officielle)"),
+        # Rétrocompatibilité d'affichage
         ('cni', "Carte Nationale d'Identité (CNI)"),
         ('passport', "Passeport"),
-        ('school_card', "Carte scolaire"),
-        ('other', "Autre"),
-        ('none', "Aucune pièce"),
+        ('receipt', "Récépissé de CNI"),
+        ('school_card', "Carte d'étudiant / d'élève"),
+        ('none', "Autre (Aucune pièce officielle)"),
+        ('other', "Autre (Aucune pièce officielle)"),
     )
     
     PAYMENT_STATUS_CHOICES = (
@@ -59,7 +87,7 @@ class Booking(models.Model):
     traveler_name = models.CharField(max_length=150, verbose_name="Nom complet du voyageur")
     traveler_phone = models.CharField(max_length=25, verbose_name="Numéro de téléphone camerounais")
     traveler_email = models.EmailField(blank=True, null=True, verbose_name="Adresse email")
-    id_type = models.CharField(max_length=20, choices=ID_TYPE_CHOICES, default='none', verbose_name="Type de pièce")
+    id_type = models.CharField(max_length=20, choices=ID_TYPE_CHOICES, default='CNI', verbose_name="Type de pièce")
     id_number = models.CharField(max_length=50, default="", blank=True, null=True, verbose_name="Numéro de la pièce d'identité")
     companions = models.JSONField(default=list, blank=True, null=True, verbose_name="Accompagnants")
     

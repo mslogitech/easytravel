@@ -10,7 +10,7 @@ from accounts.validators import (
     validate_passenger_name
 )
 from accounts.services.email_service import send_account_activation_email
-from .models import Booking
+from .models import Booking, normalize_id_type
 import qrcode
 import base64
 import hmac
@@ -79,7 +79,7 @@ def book_departure(request, departure_id):
         'first_name': current_user.first_name if current_user else '',
         'email': raw_user_email,
         'phone': current_user.phone if current_user else '',
-        'id_type': getattr(current_user, 'id_type', 'none') if current_user else 'none',
+        'id_type': normalize_id_type(getattr(current_user, 'id_type', 'OTHER')) if current_user else 'CNI',
         'seats': 1,
     }
     
@@ -100,7 +100,7 @@ def book_departure(request, departure_id):
 
         phone_raw = request.POST.get('phone', '').strip()
         email_raw = request.POST.get('email', '').strip()
-        id_type_raw = request.POST.get('id_type', 'none').strip()
+        id_type_raw = normalize_id_type(request.POST.get('id_type', 'CNI'))
         password = request.POST.get('password', '')
         password_confirm = request.POST.get('password_confirm', '')
         
@@ -184,7 +184,7 @@ def book_departure(request, departure_id):
                 companions_list = []
                 for i in range(2, seats + 1):
                     comp_name = request.POST.get(f'traveler_name_{i}', '').strip()
-                    comp_id_type = request.POST.get(f'id_type_{i}', 'none').strip()
+                    comp_id_type = normalize_id_type(request.POST.get(f'id_type_{i}', 'CNI'))
                     if comp_name:
                         companions_list.append({
                             'name': comp_name,

@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib import admin
 from accounts.models import User
 from travel.models import Departure, LineStop
-from .models import Booking, BookingFeedback
+from .models import Booking, BookingFeedback, normalize_id_type
 
 @admin.register(BookingFeedback)
 class BookingFeedbackAdmin(admin.ModelAdmin):
@@ -67,9 +67,8 @@ class BookingAdminForm(forms.ModelForm):
                 cleaned_data['traveler_phone'] = user.phone
             if not cleaned_data.get('traveler_email') and user.email:
                 cleaned_data['traveler_email'] = user.email
-            if (not cleaned_data.get('id_type') or cleaned_data.get('id_type') == 'none') and getattr(user, 'id_type', None):
-                id_type_map = {'CNI': 'cni', 'PASSPORT': 'passport', 'STUDENT': 'school_card', 'OTHER': 'other'}
-                cleaned_data['id_type'] = id_type_map.get(str(user.id_type).upper(), 'cni' if user.id_number else 'none')
+            if (not cleaned_data.get('id_type') or cleaned_data.get('id_type') in ('none', 'OTHER', 'other')) and getattr(user, 'id_type', None):
+                cleaned_data['id_type'] = normalize_id_type(user.id_type)
             if not cleaned_data.get('id_number') and getattr(user, 'id_number', None):
                 cleaned_data['id_number'] = user.id_number
 
@@ -102,7 +101,9 @@ class BookingAdminForm(forms.ModelForm):
         if not cleaned_data.get('traveler_phone'):
             cleaned_data['traveler_phone'] = "699000000"
         if not cleaned_data.get('id_type'):
-            cleaned_data['id_type'] = 'none'
+            cleaned_data['id_type'] = 'CNI'
+        else:
+            cleaned_data['id_type'] = normalize_id_type(cleaned_data['id_type'])
 
         return cleaned_data
 
@@ -152,8 +153,7 @@ class BookingAdmin(admin.ModelAdmin):
     def api_user_info(self, request, user_id):
         user = get_object_or_404(User, pk=user_id)
         full_name = f"{user.first_name} {user.last_name}".strip() or user.username
-        id_type_map = {'CNI': 'cni', 'PASSPORT': 'passport', 'STUDENT': 'school_card', 'OTHER': 'other'}
-        mapped_id_type = id_type_map.get(str(user.id_type).upper(), 'cni' if user.id_number else 'none')
+        mapped_id_type = normalize_id_type(user.id_type)
         return JsonResponse({
             'status': 'success',
             'traveler_name': full_name,
@@ -226,9 +226,8 @@ class BookingAdmin(admin.ModelAdmin):
                 obj.traveler_phone = obj.user.phone
             if not obj.traveler_email and obj.user.email:
                 obj.traveler_email = obj.user.email
-            if (not obj.id_type or obj.id_type == 'none') and getattr(obj.user, 'id_type', None):
-                id_type_map = {'CNI': 'cni', 'PASSPORT': 'passport', 'STUDENT': 'school_card', 'OTHER': 'other'}
-                obj.id_type = id_type_map.get(str(obj.user.id_type).upper(), 'cni' if obj.user.id_number else 'none')
+            if (not obj.id_type or obj.id_type in ('none', 'OTHER', 'other')) and getattr(obj.user, 'id_type', None):
+                obj.id_type = normalize_id_type(obj.user.id_type)
             if not obj.id_number and getattr(obj.user, 'id_number', None):
                 obj.id_number = obj.user.id_number
 

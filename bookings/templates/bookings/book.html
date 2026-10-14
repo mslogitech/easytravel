@@ -599,11 +599,11 @@
                             </label>
                         </div>
                         <select name="id_type" id="idTypeSelect" class="form-select form-select-modern bg-white">
-                            <option value="cni" {% if form_data.id_type == 'cni' or form_data.id_type == 'CNI' %}selected{% endif %}>Carte Nationale d'Identité (CNI)</option>
-                            <option value="passport" {% if form_data.id_type == 'passport' or form_data.id_type == 'PASSPORT' %}selected{% endif %}>Passeport</option>
-                            <option value="receipt" {% if form_data.id_type == 'receipt' or form_data.id_type == 'RECEIPT' %}selected{% endif %}>Récépissé de CNI</option>
-                            <option value="school_card" {% if form_data.id_type == 'school_card' or form_data.id_type == 'STUDENT' %}selected{% endif %}>Carte scolaire / Étudiant</option>
-                            <option value="none" {% if form_data.id_type == 'none' or form_data.id_type == 'OTHER' %}selected{% endif %}>Aucune pièce officielle</option>
+                            <option value="CNI" {% if form_data.id_type == 'CNI' or form_data.id_type == 'cni' %}selected{% endif %}>Carte Nationale d'Identité (CNI)</option>
+                            <option value="PASSPORT" {% if form_data.id_type == 'PASSPORT' or form_data.id_type == 'passport' %}selected{% endif %}>Passeport</option>
+                            <option value="RECEIPT" {% if form_data.id_type == 'RECEIPT' or form_data.id_type == 'receipt' %}selected{% endif %}>Récépissé de CNI</option>
+                            <option value="STUDENT" {% if form_data.id_type == 'STUDENT' or form_data.id_type == 'school_card' %}selected{% endif %}>Carte scolaire / Étudiant</option>
+                            <option value="OTHER" {% if form_data.id_type == 'OTHER' or form_data.id_type == 'none' or form_data.id_type == 'other' %}selected{% endif %}>Autre (Aucune pièce officielle)</option>
                         </select>
                         <div class="mt-2.5 p-2.5 bg-warning bg-opacity-10 rounded-3 border border-warning border-opacity-25 d-flex align-items-start gap-2">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0 mt-0.5">
@@ -994,11 +994,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div>
                             <label class="form-label fw-bold small text-muted mb-1">Document d'identification</label>
                             <select name="id_type_${i}" class="form-select form-select-modern">
-                                <option value="cni" ${prevId === 'cni' ? 'selected' : ''}>Carte d'Identité (CNI)</option>
-                                <option value="passport" ${prevId === 'passport' ? 'selected' : ''}>Passeport</option>
-                                <option value="receipt" ${prevId === 'receipt' ? 'selected' : ''}>Récépissé de CNI</option>
-                                <option value="school_card" ${prevId === 'school_card' ? 'selected' : ''}>Carte scolaire / Étudiant</option>
-                                <option value="none" ${prevId === 'none' ? 'selected' : ''}>Aucune pièce officielle</option>
+                                <option value="CNI" ${prevId === 'CNI' || prevId === 'cni' ? 'selected' : ''}>Carte Nationale d'Identité (CNI)</option>
+                                <option value="PASSPORT" ${prevId === 'PASSPORT' || prevId === 'passport' ? 'selected' : ''}>Passeport</option>
+                                <option value="RECEIPT" ${prevId === 'RECEIPT' || prevId === 'receipt' ? 'selected' : ''}>Récépissé de CNI</option>
+                                <option value="STUDENT" ${prevId === 'STUDENT' || prevId === 'school_card' ? 'selected' : ''}>Carte scolaire / Étudiant</option>
+                                <option value="OTHER" ${prevId === 'OTHER' || prevId === 'none' || prevId === 'other' ? 'selected' : ''}>Autre (Aucune pièce officielle)</option>
                             </select>
                         </div>
                     </div>

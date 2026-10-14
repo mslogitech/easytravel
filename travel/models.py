@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from django.db import models
+from django.conf import settings
 from agencies.models import Agency
 
 class City(models.Model):
@@ -140,8 +141,9 @@ class Departure(models.Model):
             
         agency_price = float(raw_price)
         
-        # Taux de commission de l'agence (défaut 3%)
-        fee_pct = float(self.agency.platform_fee_percentage) / 100.0 if (self.agency and hasattr(self.agency, 'platform_fee_percentage')) else 0.03
+        # Taux de commission de l'agence (défaut depuis settings.PLATFORM_FEE_PERCENTAGE)
+        default_fee = getattr(settings, 'PLATFORM_FEE_PERCENTAGE', 0.03)
+        fee_pct = float(self.agency.platform_fee_percentage) / 100.0 if (self.agency and getattr(self.agency, 'platform_fee_percentage', None) is not None) else default_fee
         platform_fee = agency_price * fee_pct
         total_price = agency_price + platform_fee
         

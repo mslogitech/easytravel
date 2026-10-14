@@ -3,6 +3,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from .models import City, Departure, LineStop, Line
 from agencies.models import Agency
+from django.conf import settings
 
 FRENCH_DAYS_SHORT = ['Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.']
 FRENCH_MONTHS_SHORT = {
@@ -100,7 +101,7 @@ def home(request):
                 if starting_price is None or tot < starting_price:
                     starting_price = tot
         elif line and line.base_price > 0:
-            fee_pct = 0.03
+            fee_pct = getattr(settings, 'PLATFORM_FEE_PERCENTAGE', 0.03)
             if hasattr(line, 'agency') and line.agency and hasattr(line.agency, 'platform_fee_percentage'):
                 fee_pct = float(line.agency.platform_fee_percentage) / 100.0
             starting_price = float(line.base_price) * (1.0 + fee_pct)
