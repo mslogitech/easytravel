@@ -125,18 +125,31 @@ class SasPayService:
         Updates booking based on verified webhook data.
         Returns: (updated: bool, obj: Booking | BookingCart | None, message: str)
         """
-        transaction_id = data.get('metadata', {}).get('transaction_id')
-        status = data.get('status', '').upper()
-        pay_amount = float(data.get('net_amount', 0) or data.get('charged', 0) or 0)
-        operator = data.get('payment_method', 'saspay')
+        if not data or not isinstance(data, dict):
+            return False, None, "Données de paiement invalides ou manquantes."
+
+        metadata = data.get('metadata')
+        if not isinstance(metadata, dict):
+            metadata = {}
+
+        transaction_id = metadata.get('transaction_id') or data.get('transaction_id') or data.get('id')
+        status = str(data.get('status') or '').upper()
+        
+        raw_amount = data.get('net_amount') or data.get('charged') or data.get('amount') or 0
+        try:
+            pay_amount = float(raw_amount)
+        except (ValueError, TypeError):
+            pay_amount = 0.0
+
+        operator = data.get('payment_method') or data.get('channel') or 'SasPay'
         
         if not transaction_id:
-            return False, None, "transaction_id manquant dans les metadata"
+            return False, None, "transaction_id manquant dans les données de retour"
 
         from bookings.models import BookingCart, Booking
         from django.db import transaction
         
-        is_cart = transaction_id.startswith('ET-CRT-')
+        is_cart = str(transaction_id).startswith('ET-CRT-')
 
         with transaction.atomic():
             if is_cart:

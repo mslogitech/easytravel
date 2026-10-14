@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% load static agency_extras %}
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -510,7 +511,7 @@
     <div class="main-content">
         <!-- Topbar avec navigation et actions utilisateur -->
         <div class="topbar d-flex justify-content-between align-items-center">
-            <div>
+            <div class="d-flex align-items-center flex-wrap gap-2">
                 <a href="/" class="btn btn-sm btn-light border rounded-pill px-3 py-1 text-secondary fw-medium d-inline-flex align-items-center gap-2 shadow-xs" target="_blank" title="Ouvrir le site public">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
@@ -518,6 +519,13 @@
                         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
                     </svg>
                     <span>Voir le site public</span>
+                </a>
+                <a href="{% url 'accounts:my_bookings' %}" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-xs" title="Consulter mon portefeuille EasyTravel">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                        <line x1="2" y1="10" x2="22" y2="10"></line>
+                    </svg>
+                    <span>Portefeuille : {{ user.wallet_balance|default:0|format_money }} FCFA</span>
                 </a>
             </div>
             
@@ -674,6 +682,10 @@
                         <div class="col-6">
                             <span class="text-muted d-block">Agence rattachée</span>
                             <strong class="text-dark">{{ request.user.agencies_owned.first.name|default:"Non assignée" }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block">Solde Portefeuille EasyTravel</span>
+                            <strong class="text-success fw-bold">{{ user.wallet_balance|default:0|format_money }} FCFA</strong>
                         </div>
                         <div class="col-6">
                             <span class="text-muted d-block">Statut du compte</span>

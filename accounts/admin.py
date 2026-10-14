@@ -8,7 +8,7 @@ class CustomUserAdmin(UserAdmin):
     )
     list_display = ('username', 'email', 'first_name', 'last_name', 'role', 'agency', 'is_active')
     list_filter = ('role', 'agency', 'is_staff', 'is_active')
-    search_fields = ('username', 'first_name', 'last_name', 'email', 'phone')
+    search_fields = ('username', 'first_name', 'last_name', 'email', 'phone', 'id_number')
 
 admin.site.register(User, CustomUserAdmin)
 

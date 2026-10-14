@@ -82,6 +82,9 @@ systemctl restart easytravel
 echo "Redémarrage de Nginx..."
 systemctl reload nginx
 
+echo "Déblocage des IP sur Fail2ban..."
+fail2ban-client unban --all 2>/dev/null || true
+
 echo "Déploiement terminé avec succès !"
 """
 stdin, stdout, stderr = ssh.exec_command(cmd_deploy)

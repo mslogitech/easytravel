@@ -54,6 +54,14 @@ def traveler_login(request):
             candidate = User.objects.filter(email__iexact=identifier).first()
         else:
             candidate = User.objects.filter(username__iexact=identifier).first()
+            if not candidate:
+                try:
+                    clean_phone = validate_cameroon_phone(identifier)
+                    candidate = User.objects.filter(phone=clean_phone).first()
+                    if not candidate:
+                        candidate = User.objects.filter(username=clean_phone).first()
+                except ValidationError:
+                    pass
 
         if candidate:
             user = authenticate(request, username=candidate.username, password=password)
@@ -86,7 +94,15 @@ def traveler_register(request):
     reg_error = None
     
     if request.method == 'POST':
-        full_name = request.POST.get('full_name', '').strip()
+        last_name_raw = request.POST.get('last_name', '').strip()
+        first_name_raw = request.POST.get('first_name', '').strip()
+        full_name_raw = request.POST.get('full_name', '').strip()
+        
+        if last_name_raw or first_name_raw:
+            full_name = f"{last_name_raw} {first_name_raw}".strip()
+        else:
+            full_name = full_name_raw
+
         email_raw = request.POST.get('email', '').strip()
         phone_raw = request.POST.get('phone', '').strip()
         id_type = request.POST.get('id_type', 'CNI')
@@ -108,11 +124,8 @@ def traveler_register(request):
             clean_phone = validate_cameroon_phone(phone_raw)
             
             # 4. Gestion de l'email facultatif
-            no_email = False
             if not email_raw:
-                # Créer un faux email basé sur le numéro
-                clean_email = f"{clean_phone}@easytravel.cm"
-                no_email = True
+                clean_email = None
             else:
                 clean_email = validate_clean_email(email_raw)
                 if User.objects.filter(email__iexact=clean_email).exists():
@@ -121,8 +134,8 @@ def traveler_register(request):
             # 5. Validation rigoureuse de la pièce d'identité (CNI, Passeport, Récépissé)
             clean_id_type, clean_id_number = validate_identity_info(id_type, id_number)
             
-            # Générer un nom d'utilisateur unique basé sur le numéro de téléphone ou l'email
-            username_base = clean_phone if no_email else clean_email.split('@')[0]
+            # Nom d'utilisateur unique : utiliser le numéro de téléphone comme identifiant par défaut
+            username_base = clean_phone.replace(' ', '').replace('+', '')
             username = username_base
             count = 1
             while User.objects.filter(username=username).exists():
@@ -151,7 +164,7 @@ def traveler_register(request):
             # Connexion automatique
             login(request, user)
             
-            if not no_email:
+            if clean_email:
                 # Tenter d'envoyer un email de bienvenue de manière sécurisée (sans faire planter le site)
                 try:
                     # Remplacé: send_account_activation_email(request, user, next_url=next_url)

@@ -41,6 +41,11 @@ def initiate_booking_payment(request, booking_id):
         messages.info(request, "Cette réservation a déjà été entièrement réglée.")
         return redirect('bookings:confirmation', reference=booking.reference)
 
+    # Si l'utilisateur possède un solde portefeuille suffisant et n'a pas forcé le paiement externe en ligne (?gateway=live),
+    # on le dirige vers l'écran de confirmation où le bouton de débit portefeuille 1-clic est immédiatement proposé !
+    if request.user.is_authenticated and hasattr(request.user, 'wallet_balance') and request.user.wallet_balance >= booking.total_amount and request.GET.get('gateway') != 'live':
+        return redirect('bookings:confirmation', reference=booking.reference)
+
     simulation_mode = getattr(settings, 'PAYMENT_SIMULATION_MODE', True)
     service = SasPayService()
 
@@ -161,24 +166,128 @@ def simulation_checkout(request, booking_id):
 
 @login_required
 @require_POST
+def pay_with_wallet(request, booking_id):
+    """
+    Règle une réservation en débitant directement le solde du portefeuille de l'utilisateur (wallet_balance).
+    Vérification stricte, débit atomique en base avec select_for_update, émission immédiate du billet et envoi de l'email de confirmation.
+    """
+    booking = None
+    try:
+        from django.db import transaction
+        from accounts.models import User
+        from accounts.services.email_service import send_ticket_confirmation_email
+        import threading
+
+        booking = get_object_or_404(Booking, id=booking_id)
+
+        # Vérification IDOR : Seul le propriétaire peut régler avec son portefeuille
+        if booking.user and booking.user != request.user:
+            messages.error(request, "Accès non autorisé à cette réservation.")
+            return redirect('travel:home')
+
+        # Si le voyageur n'était pas associé (cas réservation rapide), l'associer au compte actuel
+        if not booking.user:
+            booking.user = request.user
+            booking.save(update_fields=['user'])
+
+        if booking.payment_status == 'paid':
+            messages.info(request, "Cette réservation a déjà été entièrement réglée.")
+            return redirect('bookings:confirmation', reference=booking.reference)
+
+        user = request.user
+        required_amount = booking.total_amount or 0
+
+        with transaction.atomic():
+            # Verrouillage pessimiste de l'utilisateur pour éviter les conditions de concurrence / double débit
+            db_user = User.objects.select_for_update().get(id=user.id)
+            current_balance = getattr(db_user, 'wallet_balance', 0) or 0
+
+            if current_balance < required_amount:
+                messages.error(
+                    request,
+                    f"Solde insuffisant sur votre Portefeuille EasyTravel ({int(current_balance):,} FCFA). "
+                    f"Le montant requis pour ce voyage est de {int(required_amount):,} FCFA."
+                )
+                return redirect('bookings:confirmation', reference=booking.reference)
+
+            # Débit effectif du solde
+            db_user.wallet_balance -= required_amount
+            db_user.save(update_fields=['wallet_balance'])
+
+            tx_id = f"WLT-{booking.id}-{uuid.uuid4().hex[:8].upper()}"
+
+            if booking.cart:
+                cart_bookings = Booking.objects.filter(cart=booking.cart)
+                for b in cart_bookings:
+                    b.payment_status = 'paid'
+                    b.payment_method = 'wallet'
+                    b.payment_operator = 'Portefeuille EasyTravel'
+                    b.transaction_id = tx_id
+                    b.status = 'confirmed'
+                    b.paid_at = timezone.now()
+                    b.save()
+                booking.cart.payment_status = 'paid'
+                booking.cart.transaction_id = tx_id
+                booking.cart.save(update_fields=['payment_status', 'transaction_id'])
+            else:
+                booking.payment_status = 'paid'
+                booking.payment_method = 'wallet'
+                booking.payment_operator = 'Portefeuille EasyTravel'
+                booking.transaction_id = tx_id
+                booking.status = 'confirmed'
+                booking.paid_at = timezone.now()
+                booking.save()
+
+        # Envoi de l'email officiel avec QR Code (en arrière-plan non bloquant)
+        try:
+            email_thread = threading.Thread(
+                target=send_ticket_confirmation_email,
+                args=(request, booking),
+                daemon=True
+            )
+            email_thread.start()
+        except Exception as e:
+            logger.warning(f"Could not dispatch ticket confirmation email thread: {e}")
+
+        messages.success(
+            request,
+            f"Paiement validé avec succès ! Votre billet a été réglé depuis votre Portefeuille EasyTravel. "
+            f"Montant débité : {int(required_amount):,} FCFA. Nouveau solde disponible : {int(db_user.wallet_balance):,} FCFA."
+        )
+        return redirect('bookings:confirmation', reference=booking.reference)
+
+    except Exception as e:
+        logger.exception(f"Erreur inattendue dans pay_with_wallet pour la réservation {booking_id}: {e}")
+        messages.error(request, f"Une anomalie technique est survenue lors de l'opération : {e}")
+        if booking and hasattr(booking, 'reference') and booking.reference:
+            return redirect('bookings:confirmation', reference=booking.reference)
+        return redirect('accounts:my_bookings')
+
+
+@login_required
+@require_POST
 def simulation_process(request, booking_id):
     """
     Processes simulated payments (either successful or failed) for testing.
     Updates booking status, generates transaction ID and sends confirmation email.
     """
+    payment_method = request.POST.get('payment_method', 'mtn_momo')
+    if payment_method == 'wallet':
+        return pay_with_wallet(request, booking_id)
+
     if not settings.PAYMENT_SIMULATION_MODE:
         raise Http404("Simulation de paiement désactivée.")
         
     booking = get_object_or_404(Booking, id=booking_id, user=request.user)
 
     action = request.POST.get('action', 'success')
-    payment_method = request.POST.get('payment_method', 'mtn_momo')
     phone = request.POST.get('phone', booking.traveler_phone)
 
     operator_labels = {
         'mtn_momo': 'MTN Mobile Money',
         'orange_money': 'Orange Money Cameroun',
         'card': 'Carte Bancaire (Visa/Mastercard)',
+        'wallet': 'Portefeuille EasyTravel',
     }
     operator_name = operator_labels.get(payment_method, 'Mobile Money')
 
@@ -275,7 +384,8 @@ def saspay_notification(request):
     # PROJECT FILTERING
     # If the merchant has multiple projects, ignore webhooks not meant for us
     expected_project_id = getattr(settings, 'SASPAY_PROJECT_ID', 'easytravel')
-    incoming_project_id = payload_data.get('metadata', {}).get('project')
+    metadata = payload_data.get('metadata') if isinstance(payload_data.get('metadata'), dict) else {}
+    incoming_project_id = metadata.get('project')
     if incoming_project_id and incoming_project_id != expected_project_id:
         logger.info(f"SasPay Webhook ignoré (projet: {incoming_project_id}, attendu: {expected_project_id})")
         return HttpResponse('Ignored', status=200)
@@ -285,7 +395,11 @@ def saspay_notification(request):
     if updated and booking and event == 'transaction.success':
         try:
             from accounts.services.email_service import send_ticket_confirmation_email
-            send_ticket_confirmation_email(request, booking)
+            if hasattr(booking, 'bookings'):
+                for b in booking.bookings.all():
+                    send_ticket_confirmation_email(request, b)
+            else:
+                send_ticket_confirmation_email(request, booking)
         except Exception as e:
             logger.warning(f"Could not send ticket confirmation email during IPN: {e}")
 
@@ -302,33 +416,38 @@ def saspay_return(request):
     """
     tx_id = request.GET.get('transaction_id') or request.session.get('current_payment_tx_id')
 
-    booking = None
+    obj = None
     if tx_id:
-        service = SasPayService()
-        # Fallback manual verification if webhook is delayed
-        success, payment_data = service.verify_payment(tx_id)
-        if success:
-            updated, obj, message = service.verify_and_update_booking_webhook(payment_data)
-            # if the webhook format differs from /verify, we may need to adapt `verify_and_update_booking_webhook`
-            # or write a specific return verification handler.
-        else:
-            # We don't have an object here, fallback to session below
+        try:
+            service = SasPayService()
+            # Fallback manual verification if webhook is delayed
+            success, payment_data = service.verify_payment(tx_id)
+            if success and isinstance(payment_data, dict):
+                # Ensure transaction_id is present for lookup
+                if not payment_data.get('transaction_id'):
+                    meta = payment_data.get('metadata')
+                    if not isinstance(meta, dict) or not meta.get('transaction_id'):
+                        payment_data['transaction_id'] = tx_id
+                updated, obj, message = service.verify_and_update_booking_webhook(payment_data)
+        except Exception as e:
+            logger.exception(f"Erreur lors de la vérification SasPay au retour pour {tx_id}: {e}")
             obj = None
-        if obj:
-            if obj.payment_status == 'paid':
-                messages.success(request, "🎉 Votre paiement a été validé avec succès ! Votre(vos) billet(s) est(sont) confirmé(s).")
-            elif obj.payment_status == 'failed':
-                messages.error(request, "Le paiement a été interrompu ou refusé par l'opérateur. Vous pouvez réessayer.")
-            else:
-                messages.info(request, "Votre transaction est en cours de finalisation par votre opérateur Mobile Money.")
-            
-            if hasattr(obj, 'bookings'): # It's a Cart
-                first = obj.bookings.first()
-                if first:
-                    return redirect('bookings:confirmation', reference=first.reference)
-                return redirect('accounts:my_bookings')
-            else:
-                return redirect('bookings:confirmation', reference=obj.reference)
+
+    if obj:
+        if obj.payment_status == 'paid':
+            messages.success(request, "🎉 Votre paiement a été validé avec succès ! Votre(vos) billet(s) est(sont) confirmé(s).")
+        elif obj.payment_status == 'failed':
+            messages.error(request, "Le paiement a été interrompu ou refusé par l'opérateur. Vous pouvez réessayer.")
+        else:
+            messages.info(request, "Votre transaction est en cours de finalisation par votre opérateur Mobile Money.")
+        
+        if hasattr(obj, 'bookings'): # It's a Cart
+            first = obj.bookings.first()
+            if first:
+                return redirect('bookings:confirmation', reference=first.reference)
+            return redirect('accounts:my_bookings')
+        else:
+            return redirect('bookings:confirmation', reference=obj.reference)
 
     # Fallback to session reference if available
     ref = request.session.get('last_payment_booking_ref')

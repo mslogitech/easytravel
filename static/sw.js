@@ -1,10 +1,11 @@
-const CACHE_NAME = 'easytravel-cache-v1.0.0';
+const CACHE_NAME = 'easytravel-cache-v1.0.1';
 const OFFLINE_URL = '/offline/';
 
 const PRECACHE_ASSETS = [
   '/',
+  '/?source=pwa',
   OFFLINE_URL,
-  '/static/manifest.json',
+  '/manifest.json',
   '/static/images/pwa/icon-192x192.png',
   '/static/images/pwa/icon-512x512.png',
   '/static/images/pwa/favicon-32x32.png',
@@ -69,7 +70,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(async () => {
           console.log('[EasyTravel SW] Hors connexion, tentative chargement cache...');
-          const cachedResponse = await caches.match(request);
+          const cachedResponse = await caches.match(request, { ignoreSearch: true });
           if (cachedResponse) {
             return cachedResponse;
           }

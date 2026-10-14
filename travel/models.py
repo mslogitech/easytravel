@@ -119,6 +119,38 @@ class Departure(models.Model):
     def get_trip_end_datetime(self):
         return self.get_trip_start_datetime() + self.line.get_duration()
 
+    def calculate_pricing(self, start_stop=None, end_stop=None):
+        """
+        Calcule de manière centralisée et uniforme :
+        - agency_price : tarif brut revenant à l'agence (ex: 5 000 FCFA)
+        - platform_fee : commission / frais EasyTravel (ex: 3% -> 150 FCFA)
+        - total_price  : tarif unitaire final payé par le voyageur (ex: 5 150 FCFA)
+        """
+        raw_price = 0
+        if start_stop and end_stop:
+            if hasattr(end_stop, 'price_from_start') and hasattr(start_stop, 'price_from_start'):
+                diff = float(end_stop.price_from_start) - float(start_stop.price_from_start)
+                if diff > 0:
+                    raw_price = diff
+            if raw_price <= 0 and hasattr(end_stop, 'price_from_start') and float(end_stop.price_from_start) > 0:
+                raw_price = float(end_stop.price_from_start)
+        
+        if raw_price <= 0:
+            raw_price = float(self.line.base_price) if (self.line and self.line.base_price > 0) else 5000.0
+            
+        agency_price = float(raw_price)
+        
+        # Taux de commission de l'agence (défaut 3%)
+        fee_pct = float(self.agency.platform_fee_percentage) / 100.0 if (self.agency and hasattr(self.agency, 'platform_fee_percentage')) else 0.03
+        platform_fee = agency_price * fee_pct
+        total_price = agency_price + platform_fee
+        
+        return {
+            'agency_price': agency_price,
+            'platform_fee': platform_fee,
+            'total_price': total_price,
+        }
+
     @property
     def start_city(self):
         return self.line.departure_city

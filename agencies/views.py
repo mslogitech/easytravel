@@ -479,36 +479,106 @@ import re
 @login_required(login_url='agencies:login')
 @require_POST
 def ajax_scan_ticket(request):
-    """Endpoint AJAX pour scanner un billet et l'embarquer instantanément via mobile"""
+    """
+    Endpoint AJAX sécurisé pour scanner un billet et valider l'embarquement.
+    Gère :
+    1. Les scans de QR Code URL (/verifier/<reference>/?sig=<signature>)
+    2. Les scans legacy (REF:...|SIG:...)
+    3. Les saisies manuelles au clavier ou douchette laser directe
+    4. Vérification d'authenticité cryptographique de la signature
+    5. BLOCAGE STRICT SI NON PAYÉ (payment_status != 'paid')
+    6. Détection des doublons et annulations
+    """
     agency = get_current_agency(request)
-    payload = request.POST.get('payload', '')
+    if not agency:
+        return JsonResponse({'status': 'error', 'message': "Session d'agence non trouvée ou expirée."}, status=403)
+
+    payload = request.POST.get('payload', '').strip()
+    if not payload:
+        return JsonResponse({'status': 'error', 'message': "Aucun contenu scanné ou référence reçu."}, status=400)
     
-    # Extraire la référence (REF:UUID...)
-    ref_match = re.search(r'REF:([a-zA-Z0-9\-]+)', payload)
-    if not ref_match:
-        # Tenter de lire directement si c'est juste un UUID
-        reference = payload.strip()
-    else:
-        reference = ref_match.group(1)
-        
+    reference = None
+    sig = None
+
+    # 1. Format URL officielle : /verifier/<reference>/?sig=<sig>
+    url_match = re.search(r'/verifier/([a-zA-Z0-9\-]+)', payload)
+    if url_match:
+        reference = url_match.group(1).upper()
+        sig_match = re.search(r'[?&]sig=([a-zA-Z0-9]+)', payload)
+        if sig_match:
+            sig = sig_match.group(1)
+
+    # 2. Format legacy texte : REF:<reference>|...|SIG:<sig>
+    if not reference:
+        ref_match = re.search(r'REF:([a-zA-Z0-9\-]+)', payload)
+        if ref_match:
+            reference = ref_match.group(1).upper()
+            sig_match = re.search(r'SIG:([a-zA-Z0-9]+)', payload)
+            if sig_match:
+                sig = sig_match.group(1)
+
+    # 3. Format direct ou saisie clavier : ET-XXXXXXXX
+    if not reference:
+        direct_match = re.search(r'\b(ET-[A-Z0-9\-]+)\b', payload, re.IGNORECASE)
+        if direct_match:
+            reference = direct_match.group(1).upper()
+        else:
+            reference = payload.strip().upper()
+
     try:
-        booking = Booking.objects.get(reference=reference, departure__agency=agency)
+        booking = Booking.objects.select_related('departure', 'departure__agency').get(reference=reference)
     except Booking.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': "Billet introuvable pour cette agence."}, status=404)
+        return JsonResponse({'status': 'error', 'message': f"Billet introuvable pour la référence '{reference}'."}, status=404)
         
+    # Vérification d'appartenance à l'agence connectée
+    if booking.departure.agency != agency:
+        return JsonResponse({
+            'status': 'error', 
+            'message': f"Ce billet appartient à la compagnie '{booking.departure.agency.name}' et non à votre agence."
+        }, status=403)
+
+    # Contrôle de signature cryptographique si fournie par le QR code
+    if sig:
+        if not booking.verify_security_signature(sig):
+            return JsonResponse({
+                'status': 'error', 
+                'message': "ÉCHEC SÉCURITÉ : Signature du QR Code non authentique (billet contrefait ou altéré) !"
+            }, status=400)
+
+    # FAILLE CRITIQUE CORRIGÉE : BLOCAGE STRICT DE L'EMBARQUEMENT SI NON PAYÉ
+    if booking.payment_status != 'paid':
+        return JsonResponse({
+            'status': 'error', 
+            'message': f"EMBARQUEMENT REFUSÉ : Le billet {booking.reference} n'est PAS réglé ({booking.get_payment_status_display()}). Veuillez encaisser le voyageur au guichet."
+        }, status=400)
+
+    # Contrôle de statut de la réservation
     if booking.status == 'cancelled':
-        return JsonResponse({'status': 'error', 'message': f"Ce billet a été ANNULÉ."})
+        return JsonResponse({
+            'status': 'error', 
+            'message': f"EMBARQUEMENT REFUSÉ : Le billet {booking.reference} a été ANNULÉ."
+        }, status=400)
         
     if booking.status == 'boarded':
-        return JsonResponse({'status': 'warning', 'message': f"Le passager {booking.traveler_name} a DÉJÀ embarqué !"})
+        return JsonResponse({
+            'status': 'warning', 
+            'message': f"ATTENTION : Le passager {booking.traveler_name} a DÉJÀ embarqué !"
+        }, status=200)
+
+    if booking.is_expired and booking.departure.status in ['departed', 'cancelled']:
+        return JsonResponse({
+            'status': 'error',
+            'message': "Ce départ est clôturé ou le car est déjà parti."
+        }, status=400)
         
-    # Effectuer l'embarquement
+    # Validation de l'embarquement
     booking.status = 'boarded'
     booking.save(update_fields=['status'])
     
+    seats_text = f"{booking.seats_reserved} place{'s' if booking.seats_reserved > 1 else ''}"
     return JsonResponse({
         'status': 'success', 
-        'message': f"Succès : {booking.traveler_name} ({booking.seats_reserved} place) embarqué !",
+        'message': f"✓ VALIDÉ : {booking.traveler_name} ({seats_text}) embarqué(e) avec succès !",
         'booking_id': booking.id
     })
 

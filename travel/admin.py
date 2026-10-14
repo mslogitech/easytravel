@@ -23,6 +23,7 @@ class LineAdmin(admin.ModelAdmin):
 class LineStopAdmin(admin.ModelAdmin):
     list_display = ('line', 'city', 'stop_order', 'price_from_start', 'duration_from_start')
     list_filter = ('line__agency', 'city')
+    search_fields = ('city__name', 'line__name')
     ordering = ('line', 'stop_order')
 
 @admin.register(Vehicle)
@@ -43,4 +44,4 @@ class DepartureAdmin(admin.ModelAdmin):
     list_filter = ('status', 'agency', 'date')
     list_select_related = ('line', 'agency', 'vehicle', 'driver')
     raw_id_fields = ('line', 'agency', 'vehicle', 'driver')
-    search_fields = ('line__name', 'agency__name')
+    search_fields = ('line__name', 'agency__name', 'line__departure_city__name', 'line__arrival_city__name')

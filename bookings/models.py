@@ -43,6 +43,7 @@ class Booking(models.Model):
         ('mtn_momo', 'MTN Mobile Money'),
         ('card', 'Carte Bancaire'),
         ('online', 'Paiement en ligne'),
+        ('wallet', 'Portefeuille EasyTravel'),
     )
     
     cart = models.ForeignKey(BookingCart, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
@@ -90,14 +91,168 @@ class Booking(models.Model):
     def __str__(self):
         return f"Réservation {self.reference} - {self.traveler_name}"
 
-    def cancel(self):
+    @property
+    def unit_price(self):
+        """Tarif unitaire TTC payé par passager"""
+        if self.seats_reserved and self.seats_reserved > 0:
+            return self.total_amount / self.seats_reserved
+        return self.total_amount
+
+    def get_security_signature(self):
+        """
+        Génère une signature cryptographique HMAC-SHA256 unique et inviolable pour le billet.
+        Basée sur les identifiants clés et immuables de la réservation.
+        """
+        import hmac
+        import hashlib
+        payload = f"EASYTRAVEL:{self.reference}:{self.pk}:{self.seats_reserved}"
+        return hmac.new(settings.SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
+
+    def verify_security_signature(self, signature):
+        """
+        Vérifie si la signature fournie correspond à ce billet.
+        Prend en charge la signature sécurisée actuelle et le format de compatibilité rétroactif.
+        """
+        import hmac
+        import hashlib
+        if not signature:
+            return False
+        
+        expected = self.get_security_signature()
+        if hmac.compare_digest(str(signature).lower(), expected.lower()):
+            return True
+            
+        # Rétrocompatibilité avec l'ancien format legacy
+        try:
+            start_city = self.departure_stop.city.name if self.departure_stop and self.departure_stop.city else "Départ"
+            end_city = self.arrival_stop.city.name if self.arrival_stop and self.arrival_stop.city else "Arrivée"
+            dep_date = self.departure.date if self.departure else ""
+            legacy_payload = f"REF:{self.reference}|NOM:{self.traveler_name}|PIECE:{self.id_type}-{self.id_number}|TRAJET:{start_city}-{end_city}|DATE:{dep_date}|PLACES:{self.seats_reserved}"
+            legacy_sig = hmac.new(settings.SECRET_KEY.encode(), legacy_payload.encode(), hashlib.sha256).hexdigest()[:12]
+            return hmac.compare_digest(str(signature).lower(), legacy_sig.lower())
+        except Exception:
+            return False
+
+    def get_verification_url(self, request=None):
+        """
+        Construit l'URL publique officielle et sécurisée de vérification du billet.
+        """
+        from django.urls import reverse
+        sig = self.get_security_signature()
+        path = f"{reverse('bookings:verify_ticket', kwargs={'reference': self.reference})}?sig={sig}"
+        if request:
+            return request.build_absolute_uri(path)
+        base_url = getattr(settings, 'SITE_URL', 'https://easytravel.mslogitech.com').rstrip('/')
+        return f"{base_url}{path}"
+
+    def generate_qr_code_base64(self, request=None):
+        """
+        Génère l'image du QR Code au format Data URI (PNG base64).
+        Le QR code encode l'URL officielle certifiée EasyTravel, lisible par tout smartphone.
+        """
+        import qrcode
+        from io import BytesIO
+        import base64
+        
+        url = self.get_verification_url(request=request)
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=3
+        )
+        qr.add_data(url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        qr_b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        return f"data:image/png;base64,{qr_b64}"
+
+    @property
+    def is_expired(self):
+        """
+        Indique si le billet est expiré :
+        - Le départ est marqué comme parti ('departed') ou annulé ('cancelled')
+        - Ou la date/heure de départ du bus est passée
+        """
+        if not self.departure:
+            return True
+        if self.departure.status in ['departed', 'cancelled']:
+            return True
+        from django.utils import timezone
+        now = timezone.localtime()
+        if self.departure.date < now.date():
+            return True
+        if self.departure.date == now.date() and self.departure.time <= now.time():
+            return True
+        return False
+
+    @property
+    def is_already_validated(self):
+        """
+        Indique si le titre de transport a déjà été validé / composté à l'embarquement
+        """
+        return self.status == 'boarded'
+
+    @property
+    def can_send_ticket_email(self):
+        """
+        Contrôle d'intégrité pour l'envoi de l'e-mail officiel du billet :
+        1. Le billet doit être payé/encaissé ('paid')
+        2. Le billet ne doit pas avoir été déjà validé ('boarded')
+        3. Le billet ne doit pas être annulé ('cancelled')
+        4. Le voyage ne doit pas être expiré dans le temps
+        5. Une adresse e-mail doit exister
+        Retourne (bool, reason_str).
+        """
+        if self.payment_status != 'paid':
+            return False, "Le billet n'est pas encore payé/encaissé."
+        if self.status == 'boarded':
+            return False, "Le billet a déjà été validé à l'embarquement (passager à bord)."
+        if self.status == 'cancelled':
+            return False, "Le billet est annulé."
+        if self.is_expired:
+            return False, "Le voyage est expiré (date/heure de départ passée)."
+        if not (self.traveler_email or (self.user and self.user.email)):
+            return False, "Aucune adresse e-mail renseignée."
+        return True, "Valide"
+
+    @property
+    def can_be_cancelled(self):
+        """
+        Règles d'intégrité pour l'annulation d'un billet :
+        1. Le billet ne doit pas être déjà annulé
+        2. Le passager ne doit pas avoir déjà embarqué (billet validé au quai)
+        3. Le départ ne doit pas être expiré (date/heure de bus déjà passée)
+        """
+        if self.status == 'cancelled':
+            return False, "La réservation est déjà annulée."
+        if self.status == 'boarded':
+            return False, "Impossible d'annuler : le billet a déjà été validé à l'embarquement."
+        if self.is_expired:
+            return False, "Impossible d'annuler : la date de voyage est expirée (bus déjà parti)."
+        return True, "Annulable"
+
+    def cancel(self, force=False):
         from django.db import transaction
         from travel.models import Departure
+        
+        can_cancel, reason = self.can_be_cancelled
+        if not can_cancel and not force:
+            return False
+            
         with transaction.atomic():
             b = Booking.objects.select_for_update().get(pk=self.pk)
             if b.status != 'cancelled':
+                if not force and b.status == 'boarded':
+                    return False
+                if not force and b.is_expired:
+                    return False
                 b.status = 'cancelled'
-                if b.departure:
+                # On ne remet des places dans le bus QUE si le départ est encore futur
+                if b.departure and not b.is_expired:
                     dep = Departure.objects.select_for_update().get(pk=b.departure.pk)
                     dep.available_capacity += b.seats_reserved
                     dep.save(update_fields=['available_capacity'])
@@ -123,7 +278,7 @@ class Booking(models.Model):
             
             count = 0
             for booking in expired_bookings:
-                if booking.cancel():
+                if booking.cancel(force=True):
                     booking.payment_status = 'failed'
                     booking.save(update_fields=['payment_status'])
                     count += 1

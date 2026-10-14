@@ -158,12 +158,24 @@
         </div>
         <div class="d-flex flex-wrap gap-2">
             {% if booking.payment_status != 'paid' %}
-                <a href="{% url 'payments:initiate' booking.id %}" class="btn btn-primary rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center gap-2 shadow-sm text-white" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);">
+                {% if request.user.is_authenticated and request.user.wallet_balance >= booking.total_amount %}
+                    <form method="post" action="{% url 'payments:pay_wallet' booking.id %}" class="d-inline" onsubmit="return confirm('Confirmer le règlement de {{ booking.total_amount|format_money }} FCFA depuis votre portefeuille EasyTravel ?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center gap-2 shadow-sm text-white" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                <line x1="2" y1="10" x2="22" y2="10"></line>
+                            </svg>
+                            <span>Payer avec mon Portefeuille ({{ booking.total_amount|format_money }} FCFA)</span>
+                        </button>
+                    </form>
+                {% endif %}
+                <a href="{% url 'payments:initiate' booking.id %}?gateway=live" class="btn btn-primary rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center gap-2 shadow-sm text-white" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
                         <line x1="1" y1="10" x2="23" y2="10"></line>
                     </svg>
-                    <span>Payer maintenant (MTN / Orange / Carte)</span>
+                    <span>Payer en ligne (Mobile Money / Carte)</span>
                 </a>
             {% endif %}
             <button onclick="window.print()" class="btn btn-dark rounded-pill px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-xs">
@@ -185,6 +197,39 @@
     </div>
 
     {% if booking.payment_status != 'paid' %}
+    {% if request.user.is_authenticated and request.user.wallet_balance >= booking.total_amount %}
+    <!-- Encart Incitatif Règlement Portefeuille (Solde Suffisant) -->
+    <div class="alert border-0 shadow-sm rounded-4 p-3 mb-4 no-print text-white" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+            <div class="d-flex align-items-start gap-3">
+                <div class="p-2.5 rounded-3 bg-white bg-opacity-20 text-white flex-shrink-0 mt-1">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                        <line x1="2" y1="10" x2="22" y2="10"></line>
+                    </svg>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-1">Réglez instantanément avec votre Portefeuille EasyTravel</h5>
+                    <p class="mb-0 opacity-90 small">
+                        Vous disposez actuellement de <strong>{{ request.user.wallet_balance|format_money }} FCFA</strong> sur votre compte. Réglez cette réservation de <strong>{{ booking.total_amount|format_money }} FCFA</strong> en 1 clic sans frais supplémentaires !
+                    </p>
+                </div>
+            </div>
+            <div class="text-md-end flex-shrink-0">
+                <form method="post" action="{% url 'payments:pay_wallet' booking.id %}" onsubmit="return confirm('Confirmer le débit immédiat de {{ booking.total_amount|format_money }} FCFA sur votre portefeuille ?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-light text-success fw-bold px-4 py-2.5 rounded-pill shadow-sm d-inline-flex align-items-center gap-2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Payer {{ booking.total_amount|format_money }} FCFA avec mon Portefeuille</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Encart Incitatif Règlement Sécurisé CinetPay -->
     <div class="alert alert-warning border border-warning-subtle shadow-sm rounded-4 p-3 mb-4 no-print" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);">
         <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
@@ -203,7 +248,7 @@
                 </div>
             </div>
             <div class="text-md-end flex-shrink-0">
-                <a href="{% url 'payments:initiate' booking.id %}" class="btn btn-warning text-dark fw-bold px-4 py-2.5 rounded-pill shadow-xs d-inline-flex align-items-center gap-2">
+                <a href="{% url 'payments:initiate' booking.id %}?gateway=live" class="btn btn-warning text-dark fw-bold px-4 py-2.5 rounded-pill shadow-xs d-inline-flex align-items-center gap-2">
                     <span>Régler {{ booking.total_amount|format_money }} FCFA</span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -349,22 +394,38 @@
 
                         <!-- Bloc QR Code & Contrôle Agent -->
                         <div class="col-md-4 text-center d-flex flex-column align-items-center justify-content-center border-start ps-md-4">
-                            <div class="qr-box mb-2 position-relative">
-                                <img src="{{ qr_code_url }}" alt="QR Code Contrôle Embarquement" class="img-fluid {% if booking.payment_status != 'paid' %}opacity-75{% endif %}" width="150" height="150">
-                            </div>
-                            {% if booking.payment_status == 'paid' %}
+                            {% if booking.payment_status == 'paid' and qr_code_url %}
+                                <div class="qr-box mb-2 position-relative">
+                                    <img src="{{ qr_code_url }}" alt="QR Code Contrôle Embarquement" class="img-fluid" width="150" height="150">
+                                </div>
                                 <span class="badge bg-success text-white px-2.5 py-1 rounded-pill small fw-semibold">
                                     ✓ Titre Valide pour Embarquement
                                 </span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark px-2.5 py-1 rounded-pill small fw-semibold">
-                                    Pré-réservation Enregistrée
-                                </span>
                                 <small class="text-muted mt-1" style="font-size: 0.72rem;">
-                                    Actif après validation CinetPay
+                                    Scannable par smartphone ou douchette
                                 </small>
+                            {% else %}
+                                <div class="p-3 mb-2 rounded-4 text-center border border-warning-subtle bg-warning bg-opacity-10 d-flex flex-column align-items-center justify-content-center" style="width: 150px; height: 150px;">
+                                    <div class="rounded-circle bg-warning bg-opacity-25 p-2 mb-2 text-warning-emphasis">
+                                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="fw-bold text-warning-emphasis" style="font-size: 0.75rem;">QR Code Verrouillé</span>
+                                    <small class="text-muted" style="font-size: 0.65rem;">Généré après règlement</small>
+                                </div>
+                                <span class="badge bg-warning text-dark px-2.5 py-1 rounded-pill small fw-semibold">
+                                    En Attente de Paiement
+                                </span>
+                                <small class="text-danger fw-semibold mt-1" style="font-size: 0.72rem;">
+                                    Non valable pour l'embarquement
+                                </small>
+                                <a href="{% url 'payments:initiate' booking.id %}" class="btn btn-warning btn-sm mt-2 fw-bold text-dark rounded-pill px-3 shadow-sm no-print" style="font-size: 0.75rem;">
+                                    Payer la réservation →
+                                </a>
                             {% endif %}
-                            <span class="badge bg-light text-secondary border mt-1" style="font-size: 0.7rem;">
+                            <span class="badge bg-light text-secondary border mt-2" style="font-size: 0.7rem;">
                                 Sécurisé EasyTravel
                             </span>
                         </div>
@@ -383,7 +444,7 @@
                             </h6>
                             <ul class="mb-0 text-muted small ps-3">
                                 <li><strong>Présentation à l'agence :</strong> Veuillez vous présenter au quai au moins <strong>30 minutes</strong> avant l'heure de départ.</li>
-                                <li><strong>Vérification d'identité :</strong> Le passager doit obligatoirement présenter l'original de sa pièce d'identité (<strong>{{ booking.get_id_type_display|default:booking.id_type }} N° {{ booking.id_number }}</strong>).</li>
+                                <li><strong>Vérification d'identité :</strong> Le passager doit obligatoirement présenter l'original d'une pièce d'identité en cours de validité{% if booking.id_number %} (<strong>{{ booking.get_id_type_display|default:booking.id_type }} N° {{ booking.id_number }}</strong>){% endif %}.</li>
                                 <li><strong>Bagages :</strong> 1 bagage standard en soute inclus par passager + 1 petit sac à main.</li>
                                 <li><strong>Validité :</strong> Ce titre de transport est nominatif et valable uniquement pour la date et l'heure indiquées.</li>
                                 <li class="text-danger mt-1"><strong>Annulation et Remboursement :</strong> En cas d'empêchement, vous ne pouvez pas annuler ce billet vous-même. Veuillez contacter notre support client au <strong>(+237) 655 00 00 00</strong>. Après annulation par nos agents, la somme intégrale de votre ticket sera créditée sur votre portefeuille.</li>

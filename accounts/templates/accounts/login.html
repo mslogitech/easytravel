@@ -194,8 +194,15 @@
                                     <div class="input-group">
                                         <input type="password" name="password" id="loginPasswordInput" class="form-control py-2.5 rounded-start-3 border-end-0" 
                                                placeholder="••••••••" autocomplete="current-password" required>
-                                        <button class="btn btn-outline-secondary border-start-0 rounded-end-3 text-muted" type="button" onclick="togglePasswordVisibility('loginPasswordInput', this)" aria-label="Afficher/Masquer">
-                                            👁️
+                                        <button class="btn btn-outline-secondary border-start-0 rounded-end-3 text-muted px-3" type="button" onclick="togglePasswordVisibility('loginPasswordInput', this)" aria-label="Afficher/Masquer le mot de passe">
+                                            <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                            </svg>
+                                            <svg class="eye-closed d-none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                                            </svg>
                                         </button>
                                     </div>
                                 </div>
@@ -232,11 +239,18 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ next }}">
 
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold small text-muted">Nom complet (selon pièce d'identité) <span class="text-danger">*</span></label>
-                                    <input type="text" name="full_name" id="regFullName" class="form-control py-2.5 rounded-3" 
-                                           placeholder="Ex: Kamgaing Jean-Paul (Nom et Prénom)" value="{{ reg_data.full_name }}" required>
-                                    <small class="text-muted" style="font-size: 0.75rem;">Au moins 2 mots (Nom et Prénom d'état civil, sans chiffres).</small>
+                                <!-- Nom et Prénom séparés (sans placeholder d'exemple) -->
+                                <div class="row g-2 mb-3">
+                                    <div class="col-12 col-sm-6 mb-2 mb-sm-0">
+                                        <label class="form-label fw-semibold small text-muted">Nom de famille <span class="text-danger">*</span></label>
+                                        <input type="text" name="last_name" id="regLastName" class="form-control py-2.5 rounded-3" 
+                                               placeholder="Nom" value="{{ reg_data.last_name }}" required>
+                                    </div>
+                                    <div class="col-12 col-sm-6">
+                                        <label class="form-label fw-semibold small text-muted">Prénom <span class="text-danger">*</span></label>
+                                        <input type="text" name="first_name" id="regFirstName" class="form-control py-2.5 rounded-3" 
+                                               placeholder="Prénom" value="{{ reg_data.first_name }}" required>
+                                    </div>
                                 </div>
 
                                 <div class="mb-3">
@@ -275,26 +289,54 @@
                                     <div class="col-12 col-sm-7">
                                         <label class="form-label fw-semibold small text-muted">Numéro de la pièce <span class="text-danger" id="regIdAsterisk">*</span></label>
                                         <input type="text" name="id_number" id="regIdNumber" class="form-control py-2.5 rounded-3 text-uppercase" 
-                                               placeholder="Ex: 1102938475" value="{{ reg_data.id_number }}" required>
+                                               placeholder="Numéro de pièce" value="{{ reg_data.id_number }}" required>
                                     </div>
                                 </div>
                                 <div class="mb-3 text-muted" id="regIdHelp" style="font-size: 0.75rem;">
                                     CNI officielle : 9 à 11 caractères (ex: 102938475).
                                 </div>
 
+                                <!-- Mots de passe avec toggle pour voir ce que l'on tape -->
                                 <div class="row g-2 mb-4">
                                     <div class="col-12 col-sm-6 mb-2 mb-sm-0">
                                         <label class="form-label fw-semibold small text-muted">Mot de passe <span class="text-danger">*</span></label>
-                                        <input type="password" name="password" id="regPassword" class="form-control py-2.5 rounded-3" placeholder="6+ caractères" autocomplete="new-password" required>
+                                        <div class="input-group">
+                                            <input type="password" name="password" id="regPassword" class="form-control py-2.5 rounded-start-3 border-end-0" placeholder="6+ caractères" autocomplete="new-password" required>
+                                            <button class="btn btn-outline-secondary border-start-0 rounded-end-3 text-muted px-2.5" type="button" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Afficher/Masquer le mot de passe">
+                                                <svg class="eye-open" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                </svg>
+                                                <svg class="eye-closed d-none" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="col-12 col-sm-6">
                                         <label class="form-label fw-semibold small text-muted">Confirmation <span class="text-danger">*</span></label>
-                                        <input type="password" name="password_confirm" id="regPasswordConfirm" class="form-control py-2.5 rounded-3" placeholder="Répéter" autocomplete="new-password" required>
+                                        <div class="input-group">
+                                            <input type="password" name="password_confirm" id="regPasswordConfirm" class="form-control py-2.5 rounded-start-3 border-end-0" placeholder="Répéter" autocomplete="new-password" required>
+                                            <button class="btn btn-outline-secondary border-start-0 rounded-end-3 text-muted px-2.5" type="button" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Afficher/Masquer le mot de passe">
+                                                <svg class="eye-open" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                </svg>
+                                                <svg class="eye-closed d-none" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="alert alert-light border small text-muted rounded-3 p-3 mb-4 text-start d-flex align-items-center gap-2">
-                                    <span class="fs-4">📧</span>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary flex-shrink-0">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                        <polyline points="22,6 12,13 2,6"></polyline>
+                                    </svg>
                                     <span style="line-height: 1.4;">Après validation, vous recevrez un <strong>lien d'authentification par email</strong> pour activer définitivement votre compte.</span>
                                 </div>
 
@@ -403,5 +445,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    const openEye = btn.querySelector('.eye-open');
+    const closedEye = btn.querySelector('.eye-closed');
+    if (openEye && closedEye) {
+        openEye.classList.toggle('d-none', isPassword);
+        closedEye.classList.toggle('d-none', !isPassword);
+    }
+}
 </script>
 {% endblock %}

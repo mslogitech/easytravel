@@ -95,7 +95,19 @@ def validate_cameroon_phone(phone_raw):
         raise ValidationError("Le numéro de téléphone est obligatoire.")
 
     raw = str(phone_raw).strip()
+    # Nettoyage des préfixes en double (ex: "+237 +237", "+49 +49", "+33 +33")
+    raw = re.sub(r'(\+?237[\s\-.]*){2,}', '+237 ', raw)
+    raw = re.sub(r'(\+?49[\s\-.]*){2,}', '+49 ', raw)
+    raw = re.sub(r'(\+?33[\s\-.]*){2,}', '+33 ', raw)
+
     digits = re.sub(r'[^\d+]', '', raw)
+    if digits.startswith('+4949'):
+        digits = '+49' + digits[5:]
+    elif digits.startswith('+237237'):
+        digits = '+237' + digits[7:]
+    elif digits.startswith('+3333'):
+        digits = '+33' + digits[5:]
+
     clean_pure_digits = re.sub(r'\D', '', digits)
 
     if not clean_pure_digits:
@@ -113,6 +125,8 @@ def validate_cameroon_phone(phone_raw):
     # 1. Cas Allemagne (+49, 0049 ou préfixe national 01xx)
     if digits.startswith('+49') or digits.startswith('0049'):
         core = clean_pure_digits[2:] if digits.startswith('+49') else clean_pure_digits[4:]
+        if core.startswith('0'):
+            core = core[1:]  # Suppression du 0 indicatif national en format international
         if len(core) < 9 or len(core) > 13:
             raise ValidationError("Numéro allemand invalide : doit comporter entre 9 et 12 chiffres après l'indicatif +49.")
         return f"+49 {core[:3]} {core[3:7]} {core[7:]}".strip()
@@ -123,6 +137,8 @@ def validate_cameroon_phone(phone_raw):
     # 2. Cas France (+33, 0033 ou préfixe 06/07)
     if digits.startswith('+33') or digits.startswith('0033'):
         core = clean_pure_digits[2:] if digits.startswith('+33') else clean_pure_digits[4:]
+        if core.startswith('0'):
+            core = core[1:]  # Suppression du 0 indicatif national en format international
         if len(core) != 9:
             raise ValidationError("Numéro français invalide : doit comporter 9 chiffres après l'indicatif +33.")
         return f"+33 {core[0]} {core[1:3]} {core[3:5]} {core[5:7]} {core[7:9]}"

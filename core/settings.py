@@ -27,8 +27,11 @@ if not SECRET_KEY:
         from django.core.exceptions import ImproperlyConfigured
         raise ImproperlyConfigured("DJANGO_SECRET_KEY est obligatoire en production.")
 
-hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver')
+hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver,easytravel.cm,www.easytravel.cm,169.58.52.142')
 ALLOWED_HOSTS = [h.strip() for h in hosts_env.split(',') if h.strip()]
+for h in ['easytravel.cm', 'www.easytravel.cm', '169.58.52.142', 'easytravel.mslogitech.com']:
+    if h not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(h)
 if DEBUG and '*' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.extend(['127.0.0.1', 'localhost', 'testserver'])
 
@@ -41,6 +44,10 @@ USE_X_FORWARDED_PORT = True
 csrf_env = os.getenv('CSRF_TRUSTED_ORIGINS', '')
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in csrf_env.split(',') if o.strip()]
 default_csrf = [
+    'https://easytravel.cm',
+    'https://www.easytravel.cm',
+    'http://easytravel.cm',
+    'http://www.easytravel.cm',
     'https://easytravel.mslogitech.com',
     'http://easytravel.mslogitech.com',
     'https://*.mslogitech.com',
@@ -178,9 +185,10 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 't')
 EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() in ('true', '1', 't')
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_TIMEOUT = 5
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'EasyTravel <noreply@easytravel.mslogitech.com>')
 SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'support@easytravel.mslogitech.com')
-SITE_URL = os.getenv('SITE_URL', 'https://easytravel.mslogitech.com' if not DEBUG else 'http://127.0.0.1:8000')
+SITE_URL = os.getenv('SITE_URL', 'https://easytravel.cm' if not DEBUG else 'http://127.0.0.1:8000')
 
 # Authentication Redirects
 LOGIN_REDIRECT_URL = '/compte/mes-reservations/'
@@ -218,6 +226,11 @@ CINETPAY_NOTIFY_URL = os.getenv('CINETPAY_NOTIFY_URL', '')
 CAMPAY_APP_USERNAME = os.getenv('CAMPAY_APP_USERNAME', '')
 CAMPAY_APP_PASSWORD = os.getenv('CAMPAY_APP_PASSWORD', '')
 CAMPAY_ENVIRONMENT = os.getenv('CAMPAY_ENVIRONMENT', 'sandbox')
+
+# SasPay Configuration
+SASPAY_API_KEY = os.getenv('SASPAY_API_KEY', '')
+SASPAY_WEBHOOK_SECRET = os.getenv('SASPAY_WEBHOOK_SECRET', '')
+SASPAY_PROJECT_ID = os.getenv('SASPAY_PROJECT_ID', 'easytravel')
 
 # Payment Simulation & Sandbox Mode (True by default for tests & demo)
 PAYMENT_SIMULATION_MODE = DEBUG and os.getenv('PAYMENT_SIMULATION_MODE', 'False').lower() in ('true', '1', 't', 'yes')

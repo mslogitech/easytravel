@@ -61,6 +61,25 @@
         font-weight: bold;
     }
 
+    .payment-option-card[data-method="wallet"].selected {
+        border-color: #059669;
+        background: #ecfdf5;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    }
+
+    .payment-option-card[data-method="wallet"].selected::after {
+        background: #059669;
+    }
+
+    .brand-badge-wallet {
+        background: #059669;
+        color: #ffffff;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+    }
+
     .brand-badge-mtn {
         background: #ffcc00;
         color: #000000;
@@ -154,7 +173,11 @@
     <!-- Sandbox Mode Notification Banner -->
     <div class="sandbox-banner d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4 shadow-xs">
         <div class="d-flex align-items-center gap-3">
-            <span class="fs-4">🧪</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-warning flex-shrink-0">
+                <path d="M10 2v7.31L4.89 20a1.5 1.5 0 0 0 1.34 2h11.54a1.5 1.5 0 0 0 1.34-2L14 9.31V2"></path>
+                <path d="M8.5 2h7"></path>
+                <path d="M7 16h10"></path>
+            </svg>
             <div>
                 <strong>Environnement de Test & Simulation EasyTravel</strong>
                 <div class="small opacity-90">
@@ -182,10 +205,28 @@
                     </div>
                 </div>
 
+                <!-- Transparence des Frais Opérateur -->
+                <div class="p-3 mb-4 rounded-3 border d-flex align-items-start gap-2.5" style="background: #f8fafc; border-color: #e2e8f0;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary flex-shrink-0 mt-0.5">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <div>
+                        <div class="fw-bold small text-dark mb-1 d-flex align-items-center gap-2">
+                            <span>Transparence tarifaire</span>
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20 rounded-pill px-2 py-0.5" style="font-size: 0.68rem;">Frais opérateur</span>
+                        </div>
+                        <p class="text-muted small mb-0" style="font-size: 0.8rem; line-height: 1.45;">
+                            Selon votre opérateur (<strong>Orange Money</strong> ou <strong>MTN MoMo</strong>), de légers frais de transaction mobile usuels (~1% à 2%) sont décomptés par l'opérateur lors de la confirmation par code secret sur votre téléphone.
+                        </p>
+                    </div>
+                </div>
+
                 <form id="paymentForm" method="post" action="{% url 'payments:simulation_process' booking.id %}">
                     {% csrf_token %}
                     <input type="hidden" name="action" id="actionField" value="success">
-                    <input type="hidden" name="payment_method" id="paymentMethodField" value="mtn_momo">
+                    <input type="hidden" name="payment_method" id="paymentMethodField" value="{% if request.user.is_authenticated and request.user.wallet_balance >= booking.total_amount %}wallet{% else %}mtn_momo{% endif %}">
 
                     <!-- Options de Paiement -->
                     <div class="mb-4">
@@ -194,8 +235,53 @@
                         </label>
                         
                         <div class="d-flex flex-column gap-3">
+                            {% if request.user.is_authenticated %}
+                                {% if request.user.wallet_balance >= booking.total_amount %}
+                                    <!-- 0. Portefeuille EasyTravel (Solde suffisant) -->
+                                    <div class="payment-option-card selected" data-method="wallet" onclick="selectPaymentMethod('wallet', this)">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="rounded-3 p-2 d-flex align-items-center justify-content-center text-white" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); width: 44px; height: 44px;">
+                                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                                        <line x1="2" y1="10" x2="22" y2="10"></line>
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <h6 class="fw-bold mb-0 text-dark">Mon Portefeuille EasyTravel</h6>
+                                                        <span class="badge bg-success text-white rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">Recommandé</span>
+                                                    </div>
+                                                    <small class="text-success fw-medium">Solde disponible : {{ request.user.wallet_balance|format_money }} FCFA (Débit instantané sans frais)</small>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-success text-white px-2.5 py-1.5 rounded-pill fw-bold" style="font-size: 0.78rem;">Solde : {{ request.user.wallet_balance|format_money }} F</span>
+                                        </div>
+                                    </div>
+                                {% elif request.user.wallet_balance > 0 %}
+                                    <!-- Portefeuille avec Solde Partiel Insuffisant -->
+                                    <div class="payment-option-card opacity-75" style="background: #f8fafc; border-color: #e2e8f0; cursor: not-allowed;" title="Solde insuffisant pour ce voyage">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="rounded-3 p-2 d-flex align-items-center justify-content-center text-muted" style="background: #e2e8f0; width: 44px; height: 44px;">
+                                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                                        <line x1="2" y1="10" x2="22" y2="10"></line>
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <h6 class="fw-bold mb-0 text-secondary">Portefeuille EasyTravel</h6>
+                                                    <small class="text-muted">Solde disponible : {{ request.user.wallet_balance|format_money }} FCFA (Insuffisant pour {{ booking.total_amount|format_money }} FCFA requis)</small>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-secondary bg-opacity-25 text-secondary px-2.5 py-1.5 rounded-pill fw-bold" style="font-size: 0.75rem;">Solde insuffisant</span>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+
                             <!-- 1. MTN Mobile Money -->
-                            <div class="payment-option-card selected" data-method="mtn_momo" onclick="selectPaymentMethod('mtn_momo', this)">
+                            <div class="payment-option-card {% if not request.user.is_authenticated or request.user.wallet_balance < booking.total_amount %}selected{% endif %}" data-method="mtn_momo" onclick="selectPaymentMethod('mtn_momo', this)">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <div class="d-flex align-items-center gap-3">
                                         <div class="rounded-3 p-2 d-flex align-items-center justify-content-center" style="background: #ffcc00; width: 44px; height: 44px;">
@@ -248,7 +334,7 @@
                     </div>
 
                     <!-- Champ Téléphone Mobile Money -->
-                    <div id="phoneSection" class="mb-4">
+                    <div id="phoneSection" class="mb-4" {% if request.user.is_authenticated and request.user.wallet_balance >= booking.total_amount %}style="display: none;"{% endif %}>
                         <label class="form-label fw-bold small text-secondary">Numéro de téléphone de débit (Cameroun)</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light fw-bold text-muted">+237</span>
@@ -261,12 +347,12 @@
 
                     <!-- Boutons d'Action -->
                     <div class="d-flex flex-column gap-2 mt-4">
-                        <button type="button" onclick="startSimulation('success')" class="btn btn-primary btn-lg rounded-pill fw-bold py-3 shadow-sm d-flex align-items-center justify-content-center gap-2" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);">
+                        <button type="button" id="btnSubmitPayment" onclick="startSimulation('success')" class="btn btn-lg rounded-pill fw-bold py-3 shadow-sm d-flex align-items-center justify-content-center gap-2" style="{% if request.user.is_authenticated and request.user.wallet_balance >= booking.total_amount %}background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white;{% else %}background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white;{% endif %}">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
                             </svg>
-                            <span>Valider le Paiement Simulé ({{ booking.total_amount|format_money }} FCFA)</span>
+                            <span id="btnSubmitLabel">{% if request.user.is_authenticated and request.user.wallet_balance >= booking.total_amount %}Régler avec mon Portefeuille ({{ booking.total_amount|format_money }} FCFA){% else %}Valider le Paiement Simulé ({{ booking.total_amount|format_money }} FCFA){% endif %}</span>
                         </button>
 
                         <div class="d-flex gap-2">
@@ -333,7 +419,7 @@
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <span class="text-muted">Prix unitaire :</span>
-                        <span class="text-muted">{{ booking.total_amount|divisibleby:booking.seats_reserved|default:booking.total_amount }} FCFA</span>
+                        <span class="text-muted">{{ booking.unit_price|format_money }} FCFA</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-2">
                         <strong class="fs-5 text-dark">Net à régler :</strong>
@@ -374,15 +460,15 @@
 
         <div class="text-start mb-4">
             <div class="sim-step" id="step1">
-                <span>📡</span>
+                <span>•</span>
                 <span>1. Envoi de la requête de débit USSD...</span>
             </div>
             <div class="sim-step" id="step2">
-                <span>🔐</span>
+                <span>•</span>
                 <span>2. Confirmation du code PIN Mobile Money...</span>
             </div>
             <div class="sim-step" id="step3">
-                <span>🎫</span>
+                <span>•</span>
                 <span>3. Émission et signature du billet officiel...</span>
             </div>
         </div>
@@ -401,18 +487,32 @@
 
         const phoneSection = document.getElementById('phoneSection');
         const phoneHint = document.getElementById('phoneHint');
+        const submitBtn = document.getElementById('btnSubmitPayment');
+        const submitLabel = document.getElementById('btnSubmitLabel');
 
-        if (method === 'card') {
-            phoneHint.textContent = "Une autorisation de carte bancaire virtuelle sera simulée avec succès.";
-        } else if (method === 'orange_money') {
-            phoneHint.textContent = "Une invite Orange Money (#150#) sera simulée sur ce numéro.";
+        if (method === 'wallet') {
+            if (phoneSection) phoneSection.style.display = 'none';
+            if (submitBtn) submitBtn.style.background = 'linear-gradient(135deg, #059669 0%, #10b981 100%)';
+            if (submitLabel) submitLabel.textContent = "Régler avec mon Portefeuille ({{ booking.total_amount|format_money }} FCFA)";
         } else {
-            phoneHint.textContent = "Une invite MTN Mobile Money (*126#) sera simulée sur ce numéro.";
+            if (phoneSection) phoneSection.style.display = 'block';
+            if (submitBtn) submitBtn.style.background = 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
+            if (method === 'card') {
+                if (phoneHint) phoneHint.textContent = "Une autorisation de carte bancaire virtuelle sera simulée avec succès.";
+                if (submitLabel) submitLabel.textContent = "Valider le Paiement Simulé ({{ booking.total_amount|format_money }} FCFA)";
+            } else if (method === 'orange_money') {
+                if (phoneHint) phoneHint.textContent = "Une invite Orange Money (#150#) sera simulée sur ce numéro.";
+                if (submitLabel) submitLabel.textContent = "Valider le Paiement Simulé ({{ booking.total_amount|format_money }} FCFA)";
+            } else {
+                if (phoneHint) phoneHint.textContent = "Une invite MTN Mobile Money (*126#) sera simulée sur ce numéro.";
+                if (submitLabel) submitLabel.textContent = "Valider le Paiement Simulé ({{ booking.total_amount|format_money }} FCFA)";
+            }
         }
     }
 
     function startSimulation(action) {
         document.getElementById('actionField').value = action;
+        const currentMethod = document.getElementById('paymentMethodField').value;
         const overlay = document.getElementById('simulationOverlay');
         const title = document.getElementById('simTitle');
         const subtitle = document.getElementById('simSubtitle');
@@ -432,7 +532,7 @@
             setTimeout(() => {
                 step1.classList.remove('active');
                 step2.classList.add('active');
-                step2.innerHTML = "<span>❌</span><span>2. Solde insuffisant / Transaction rejetée</span>";
+                step2.innerHTML = "<span>✕</span><span>2. Solde insuffisant / Transaction rejetée</span>";
                 step2.style.background = "#fee2e2";
                 step2.style.color = "#b91c1c";
                 bar.classList.remove('bg-primary');
@@ -446,7 +546,48 @@
             return;
         }
 
-        // Mode Succès
+        // Mode Portefeuille EasyTravel
+        if (currentMethod === 'wallet') {
+            title.textContent = "Règlement par Portefeuille...";
+            subtitle.textContent = "Débit direct de votre solde disponible EasyTravel";
+            step1.classList.add('active');
+            step1.innerHTML = "<span>•</span><span>1. Vérification et débit de votre solde portefeuille...</span>";
+            step2.innerHTML = "<span>•</span><span>2. Enregistrement comptable immédiat...</span>";
+            step3.innerHTML = "<span>•</span><span>3. Émission et signature du billet officiel...</span>";
+            bar.style.width = '40%';
+
+            setTimeout(() => {
+                step1.classList.remove('active');
+                step1.classList.add('done');
+                step1.innerHTML = "<span>✓</span><span>1. Solde portefeuille débité avec succès</span>";
+                step2.classList.add('active');
+                bar.style.width = '75%';
+
+                setTimeout(() => {
+                    step2.classList.remove('active');
+                    step2.classList.add('done');
+                    step2.innerHTML = "<span>✓</span><span>2. Réservation confirmée et comptabilisée</span>";
+                    step3.classList.add('active');
+                    bar.style.width = '95%';
+
+                    setTimeout(() => {
+                        step3.classList.remove('active');
+                        step3.classList.add('done');
+                        step3.innerHTML = "<span>✓</span><span>3. Billet EasyTravel émis et signé</span>";
+                        bar.style.width = '100%';
+                        bar.classList.remove('bg-primary');
+                        bar.classList.add('bg-success');
+
+                        setTimeout(() => {
+                            document.getElementById('paymentForm').submit();
+                        }, 400);
+                    }, 500);
+                }, 600);
+            }, 600);
+            return;
+        }
+
+        // Mode Succès (Opérateurs externes)
         step1.classList.add('active');
         bar.style.width = '35%';
 

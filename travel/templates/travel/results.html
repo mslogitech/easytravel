@@ -1,130 +1,438 @@
 {% extends 'travel/base.html' %}
 {% load agency_extras %}
+{% load static %}
 
-{% block title %}Résultats de recherche{% endblock %}
+{% block title %}Résultats de recherche{% if departure_city and arrival_city %} : {{ departure_city.name }} vers {{ arrival_city.name }}{% endif %} - EasyTravel{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Style du Slider / Carousel de dates */
+    /* =========================================================
+       1. Navigation Calendrier de Dates
+       ========================================================= */
     .date-nav-wrapper {
-        background: white;
-        border-radius: 18px;
-        padding: 16px 20px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
-        margin-bottom: 28px;
-        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 10px 14px;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+        margin-bottom: 16px;
+        border: 1.5px solid #e2e8f0;
     }
-    
+    .btn-cal-step {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        border-radius: 100px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #475569;
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+    .btn-cal-step:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+    .btn-cal-step-next {
+        background: #2563eb;
+        color: #ffffff;
+        border-color: #2563eb;
+    }
+    .btn-cal-step-next:hover {
+        background: #1d4ed8;
+        color: #ffffff;
+    }
     .date-slider-container {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 8px;
         position: relative;
     }
-    
     .date-slider {
         display: flex;
-        gap: 12px;
+        gap: 8px;
         overflow-x: auto;
         scroll-behavior: smooth;
-        scrollbar-width: none; /* Firefox */
-        -ms-overflow-style: none;  /* IE and Edge */
-        padding: 6px 2px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        padding: 2px 2px;
         flex-grow: 1;
     }
-    .date-slider::-webkit-scrollbar {
-        display: none; /* Chrome, Safari */
-    }
+    .date-slider::-webkit-scrollbar { display: none; }
     
     .date-card {
-        min-width: 105px;
+        min-width: 68px;
         flex-shrink: 0;
         text-align: center;
-        border-radius: 14px;
-        padding: 10px 12px;
+        border-radius: 12px;
+        padding: 6px 6px;
         border: 1.5px solid #e2e8f0;
         background: #f8fafc;
         text-decoration: none;
         color: #334155;
-        transition: all 0.25s ease;
+        transition: all 0.2s ease;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
     }
     .date-card:hover {
-        border-color: #3b82f6;
+        border-color: #2563eb;
         background: #eff6ff;
         color: #1d4ed8;
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
     }
     .date-card.active {
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        color: white !important;
-        border-color: #2563eb;
-        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
-        transform: scale(1.03);
+        background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+        color: #ffffff !important;
+        border-color: #1d4ed8;
+        box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
     }
-    .date-card.active .text-muted {
-        color: rgba(255, 255, 255, 0.85) !important;
-    }
-    .date-card.active .badge-today {
-        background-color: rgba(255, 255, 255, 0.3) !important;
-        color: white !important;
-    }
+    .date-card.active .text-muted { color: rgba(255, 255, 255, 0.85) !important; }
 
     .slider-nav-btn {
-        width: 44px;
-        height: 44px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         border: 1.5px solid #cbd5e1;
-        background: white;
+        background: #ffffff;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.3rem;
-        color: #475569;
-        transition: all 0.2s;
+        color: #334155;
+        transition: all 0.2s ease;
         cursor: pointer;
         flex-shrink: 0;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
     .slider-nav-btn:hover {
-        background: #3b82f6;
-        color: white;
-        border-color: #3b82f6;
-        transform: scale(1.08);
-        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        background: #2563eb;
+        color: #ffffff;
+        border-color: #2563eb;
     }
 
-    /* Animation badge auto */
-    .auto-badge {
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        color: #1e40af;
+    /* =========================================================
+       2. Zone de Filtres avec Menus Déroulants (Dropdowns)
+       ========================================================= */
+    .filter-bar-card {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 1.25rem 1.5rem;
+        border: 1.5px solid #cbd5e1;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+        margin-bottom: 1.5rem;
+    }
+    .filter-bar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .form-select-filter {
+        border: 1.5px solid #cbd5e1;
         border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.92rem;
+        color: #0f172a;
+        background-color: #ffffff;
+        padding: 0.65rem 0.85rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .form-select-filter:focus {
+        border-color: #1d4ed8;
+        box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
+        outline: none;
+    }
+    .filter-label {
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #475569;
+        margin-bottom: 0.35rem;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
     }
 
-    /* Rendu Mobile Fluide des Cartes de Départs & Dates */
+    /* =========================================================
+       3. Carte de Voyage (Departure Card)
+       ========================================================= */
+    .departure-card {
+        background: #ffffff;
+        border-radius: 18px;
+        border: 1.5px solid #cbd5e1;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+        margin-bottom: 1.25rem;
+        transition: all 0.25s ease;
+        overflow: hidden;
+    }
+    .departure-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+        border-color: #1d4ed8;
+    }
+
+    /* En-tête Agence & Confort */
+    .card-header-trip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.9rem 1.25rem;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .trip-agency-logo {
+        height: 38px;
+        max-width: 95px;
+        object-fit: contain;
+        background: #ffffff;
+        padding: 4px 8px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+    .trip-agency-placeholder {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .trip-agency-name {
+        font-weight: 800;
+        font-size: 1rem;
+        color: #0f172a;
+        line-height: 1.2;
+    }
+    .trip-rating-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #b45309;
+        background: #fef3c7;
+        padding: 0.15rem 0.5rem;
+        border-radius: 100px;
+        border: 1px solid #fde68a;
+    }
+    .badge-comfort {
+        padding: 0.35rem 0.75rem;
+        border-radius: 100px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .badge-vip {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+    }
+    .badge-standard {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+
+    /* Corps du Trajet & Horaires */
+    .card-body-trip {
+        padding: 1.1rem 1.25rem;
+    }
+    .trip-itinerary-grid {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    .trip-point {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 0;
+        min-width: 0;
+    }
+    .trip-point-end {
+        text-align: right;
+        align-items: flex-end;
+    }
+    .trip-time {
+        font-size: 1.45rem;
+        font-weight: 900;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+    }
+    .trip-city {
+        font-weight: 700;
+        font-size: 0.98rem;
+        color: #1e293b;
+        margin-top: 0.15rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+    .trip-station-label {
+        font-size: 0.72rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    /* Ligne Visuelle de Trajet */
+    .trip-direction {
+        flex: 0 1 100px;
+        text-align: center;
+        padding: 0 0.35rem;
+        min-width: 45px;
+    }
+    .trip-line-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        margin-bottom: 0.25rem;
+    }
+    .trip-line-track {
+        flex: 1;
+        height: 2px;
+        background: #cbd5e1;
+    }
+    .trip-line-bullet {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #1d4ed8;
+        flex-shrink: 0;
+    }
+    .trip-line-name {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #64748b;
+        max-width: 100px;
+        margin: 0 auto;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Pied de Carte (Tarif & Bouton Réserver) */
+    .card-footer-trip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-top: 1px solid #f1f5f9;
+        background: #ffffff;
+    }
+    .trip-price-block {
+        display: flex;
+        flex-direction: column;
+    }
+    .trip-price-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: #64748b;
+        letter-spacing: 0.04em;
+    }
+    .trip-price-value {
+        font-size: 1.6rem;
+        font-weight: 900;
+        color: #1d4ed8;
+        line-height: 1.1;
+    }
+    .trip-currency {
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #2563eb;
+        margin-left: 2px;
+    }
+    .trip-availability-badge {
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #059669;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        margin-top: 0.2rem;
+    }
+    .btn-trip-book {
+        background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 0.98rem;
+        padding: 0.7rem 1.6rem;
+        border-radius: 100px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 14px rgba(29, 78, 216, 0.25);
+        transition: all 0.2s ease;
+    }
+    .btn-trip-book:hover {
+        background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(29, 78, 216, 0.35);
+    }
+
+    /* =========================================================
+       4. Adaptations Spécifiques Mobile / Téléphone
+       ========================================================= */
     @media (max-width: 767.98px) {
         .date-nav-wrapper {
-            padding: 10px 12px !important;
-            border-radius: 14px !important;
-            margin-bottom: 18px !important;
+            padding: 8px 10px;
+            margin-bottom: 12px;
         }
         .date-card {
-            min-width: 82px !important;
-            padding: 8px 6px !important;
-            border-radius: 12px !important;
+            min-width: 60px;
+            padding: 5px 4px;
         }
-        .slider-nav-btn {
-            display: none !important; /* Défilement tactile natif sur mobile */
+        .filter-bar-card {
+            padding: 0.85rem 1rem;
         }
-        .border-end, .border-start {
-            border-right: none !important;
-            border-left: none !important;
-            border-bottom: 1px solid #f1f5f9 !important;
+        .card-header-trip {
+            padding: 0.7rem 0.85rem;
+        }
+        .card-body-trip {
+            padding: 0.85rem;
+        }
+        .card-footer-trip {
+            padding: 0.8rem 0.85rem;
+        }
+        .trip-time {
+            font-size: 1.25rem;
+        }
+        .trip-city {
+            font-size: 0.88rem;
+        }
+        .trip-direction {
+            flex: 0 1 65px;
+            min-width: 40px;
+            padding: 0 2px;
+        }
+        .trip-line-name {
+            max-width: 65px;
+            font-size: 0.65rem;
+        }
+        .trip-price-value {
+            font-size: 1.35rem;
+        }
+        .btn-trip-book {
+            padding: 0.55rem 1.1rem;
+            font-size: 0.88rem;
         }
     }
 </style>
@@ -132,7 +440,8 @@
 
 {% block content %}
 <div class="container py-4">
-    <!-- Header recherche -->
+
+    <!-- En-tête de recherche avec Trajet & Villes -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div>
             {% if departure_city and arrival_city %}
@@ -145,11 +454,11 @@
                     <span>{{ arrival_city.name }}</span>
                 </h2>
             {% else %}
-                <h2 class="fw-bold mb-1" style="color: #0f172a;">Tous les départs disponibles</h2>
+                <h2 class="fw-bold mb-1" style="color: #0f172a;">Tous les Départs Disponibles</h2>
             {% endif %}
             <p class="text-muted mb-0 d-flex align-items-center gap-2">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-secondary">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary">
+                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
                     <line x1="16" y1="2" x2="16" y2="6"></line>
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
@@ -157,59 +466,45 @@
                 <strong>{{ selected_date_display }}</strong>
                 {% if is_today %}
                     <span class="badge bg-success bg-opacity-10 text-success ms-1">Aujourd'hui</span>
-                    <span class="text-secondary small ms-1">(à partir de {{ current_time_display }})</span>
+                    <span class="text-secondary small ms-1">(dès {{ current_time_display }})</span>
                 {% endif %}
             </p>
         </div>
-        <a href="{% url 'travel:home' %}" class="btn btn-outline-secondary rounded-pill px-4 d-inline-flex align-items-center gap-2">
+        <a href="{% url 'travel:home' %}" class="btn btn-outline-secondary rounded-pill px-4 d-inline-flex align-items-center gap-2 shadow-xs">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <span>Modifier la recherche</span>
+            <span>Nouvelle recherche</span>
         </a>
     </div>
 
-    <!-- Alerte si proposition automatique de date la plus proche -->
-    {% if is_auto_date %}
-    <div class="alert auto-badge p-3 d-flex align-items-center gap-3 mb-4 shadow-sm">
-        <div class="text-primary flex-shrink-0">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="16" x2="12" y2="12"></line>
-                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
-        </div>
-        <div class="flex-grow-1">
-            <h6 class="fw-bold mb-1">Date proposée automatiquement au plus proche</h6>
-            <div class="small">
-                Aucune date n'avait été sélectionnée lors de votre recherche. Le système a automatiquement ciblé la date la plus proche disponible : <strong>{{ selected_date_display }}</strong>.
-                Utilisez le carrousel ci-dessous ou le bouton <strong>Suivant</strong> pour explorer les autres jours.
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Carrousel / Slider de Dates avec bouton NEXT pour scroller -->
+    <!-- Carrousel / Slider de Dates avec navigation fluide et ultra-compacte -->
     <div class="date-nav-wrapper">
         <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-            <span class="small fw-semibold text-uppercase text-muted" style="letter-spacing: 0.5px;">
-                Choisir une date de voyage
+            <span class="small fw-bold text-uppercase text-muted d-flex align-items-center gap-1.5" style="letter-spacing: 0.5px; font-size: 0.72rem;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span>Calendrier des départs</span>
             </span>
-            <div class="d-flex gap-2">
+            <div class="d-flex align-items-center gap-1.5">
                 {% if prev_date_str %}
                 <a href="{% url 'travel:search' %}?departure_city={{ selected_departure }}&arrival_city={{ selected_arrival }}&date={{ prev_date_str }}" 
-                   class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1.5">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                   class="btn-cal-step" title="Jour précédent" aria-label="Jour précédent">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
-                    <span>Jour précédent</span>
+                    <span class="d-none d-sm-inline">Préc.</span>
                 </a>
                 {% endif %}
                 <a href="{% url 'travel:search' %}?departure_city={{ selected_departure }}&arrival_city={{ selected_arrival }}&date={{ next_date_str }}" 
-                   class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1.5">
-                    <span>Jour suivant</span>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                   class="btn-cal-step btn-cal-step-next" title="Jour suivant" aria-label="Jour suivant">
+                    <span class="d-none d-sm-inline">Suiv.</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
                 </a>
@@ -217,152 +512,262 @@
         </div>
 
         <div class="date-slider-container">
-            <!-- Bouton Scroll Précédent -->
-            <button type="button" class="slider-nav-btn" id="sliderPrevBtn" title="Faire défiler vers la gauche">
-                ‹
+            <button class="slider-nav-btn" id="sliderPrevBtn" aria-label="Défiler vers la gauche">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
             </button>
-
-            <!-- Liste horizontale des dates scrollable -->
             <div class="date-slider" id="dateSlider">
                 {% for item in slider_dates %}
                 <a href="{% url 'travel:search' %}?departure_city={{ selected_departure }}&arrival_city={{ selected_arrival }}&date={{ item.date_str }}" 
                    class="date-card {% if item.is_selected %}active{% endif %}"
-                   id="{% if item.is_selected %}activeDateCard{% endif %}">
-                    <span class="small fw-semibold {% if item.is_selected %}text-white{% else %}text-muted{% endif %}">
-                        {{ item.day_short }}
-                    </span>
-                    <span class="fs-4 fw-bold my-1">
-                        {{ item.day_num }}
-                    </span>
-                    <span class="small {% if item.is_selected %}text-white-50{% else %}text-secondary{% endif %}">
-                        {{ item.month_short }}
-                    </span>
-
+                   {% if item.is_selected %}id="activeDateCard"{% endif %}>
+                    <span class="text-uppercase small fw-bold" style="font-size: 0.68rem;">{{ item.day_short }}</span>
+                    <span class="fw-bolder my-0" style="font-size: 1.15rem; line-height: 1.15;">{{ item.day_num }}</span>
+                    <span class="small text-muted" style="font-size: 0.68rem;">{{ item.month_short }}</span>
                     {% if item.is_today %}
-                    <span class="badge bg-warning text-dark mt-1 badge-today" style="font-size: 0.65rem;">
-                        Aujourd'hui
-                    </span>
-                    {% elif item.has_departures %}
-                    <span class="badge bg-primary bg-opacity-10 text-primary mt-1" style="font-size: 0.65rem;">
-                        Disponible
-                    </span>
+                        <span class="badge bg-success bg-opacity-25 text-success rounded-pill mt-0.5" style="font-size: 0.58rem; padding: 2px 4px;">Aujourd'hui</span>
                     {% endif %}
                 </a>
                 {% endfor %}
             </div>
-
-            <!-- Bouton Scroll NEXT / SUIVANT pour faire défiler vers les autres dates -->
-            <button type="button" class="slider-nav-btn" id="sliderNextBtn" title="Faire défiler vers les dates suivantes (Next)">
-                ›
+            <button class="slider-nav-btn" id="sliderNextBtn" aria-label="Défiler vers la droite">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
             </button>
         </div>
     </div>
 
-    <!-- Liste des départs -->
-    {% if departures %}
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <span class="text-muted fw-semibold">
-            {{ departures|length }} départ{{ departures|length|pluralize:"s" }} trouvé{{ departures|length|pluralize:"s" }}
+    <!-- =========================================================
+         NOUVELLE ZONE DE FILTRES : MENUS DÉROULANTS COMPACTS
+         ========================================================= -->
+    <div class="filter-bar-card">
+        <div class="filter-bar-header">
+            <div class="d-flex align-items-center gap-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <span class="fw-bold text-dark">Filtres de recherche</span>
+            </div>
+            <button type="button" class="btn btn-sm btn-link text-primary p-0 text-decoration-none fw-semibold" id="resetFiltersBtn">
+                Réinitialiser
+            </button>
+        </div>
+
+        <div class="row g-3">
+            <!-- 1. Menu Déroulant Agences -->
+            <div class="col-6 col-md-3">
+                <label class="filter-label" for="filterAgencySelect">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="15" rx="2"></rect>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>Compagnie</span>
+                </label>
+                <select id="filterAgencySelect" class="form-select form-select-filter">
+                    <option value="">Toutes les compagnies</option>
+                    {% for agency in unique_agencies %}
+                    <option value="{{ agency.id }}">{{ agency.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- 2. Menu Déroulant Horaires -->
+            <div class="col-6 col-md-3">
+                <label class="filter-label" for="filterTimeSelect">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>Horaire</span>
+                </label>
+                <select id="filterTimeSelect" class="form-select form-select-filter">
+                    <option value="">Tous les horaires</option>
+                    <option value="morning">Matin (05h - 12h)</option>
+                    <option value="afternoon">Après-midi (12h - 18h)</option>
+                    <option value="evening">Soirée (18h - 23h)</option>
+                </select>
+            </div>
+
+            <!-- 3. Menu Déroulant Confort -->
+            <div class="col-6 col-md-3">
+                <label class="filter-label" for="filterComfortSelect">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    <span>Confort</span>
+                </label>
+                <select id="filterComfortSelect" class="form-select form-select-filter">
+                    <option value="">Tous les types</option>
+                    <option value="vip">VIP / Climatisé</option>
+                    <option value="standard">Bus Standard</option>
+                </select>
+            </div>
+
+            <!-- 4. Menu Déroulant Trier par -->
+            <div class="col-6 col-md-3">
+                <label class="filter-label" for="sortSelect">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="4" y1="6" x2="20" y2="6"></line>
+                        <line x1="4" y1="12" x2="14" y2="12"></line>
+                        <line x1="4" y1="18" x2="8" y2="18"></line>
+                    </svg>
+                    <span>Trier par</span>
+                </label>
+                <select id="sortSelect" class="form-select form-select-filter">
+                    <option value="time-asc" selected>Heure (Le plus tôt)</option>
+                    <option value="price-asc">Prix (Le moins cher)</option>
+                    <option value="rating-desc">Note (Les mieux notés)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compteur et Informations Résultats -->
+    <div class="d-flex justify-content-between align-items-center mb-3 px-1">
+        <span class="text-dark fw-bold fs-6" id="resultsCountLabel">
+            {{ departures|length }} départ{{ departures|length|pluralize:"s" }} disponible{{ departures|length|pluralize:"s" }}
         </span>
     </div>
 
-    <div class="row g-4">
+    <!-- =========================================================
+         LISTE DES DÉPARTS / VOYAGES
+         ========================================================= -->
+    {% if departures %}
+    <div id="departuresContainer">
         {% for departure in departures %}
-        <div class="col-12">
-            <div class="card border-0 shadow-sm rounded-4 overflow-hidden position-relative bg-white">
-                <div class="row g-0 align-items-center">
-                    <!-- Agence Info -->
-                    <div class="col-md-3 bg-light p-4 text-center h-100 d-flex flex-column justify-content-center border-end">
-                        <div class="fw-bold text-dark fs-5 mb-1">{{ departure.agency.name }}</div>
-                        <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill mx-auto">
-                            {{ departure.vehicle.vehicle_type|default:"Bus Standard" }}
-                        </span>
-                        {% if departure.vehicle.registration %}
-                        <small class="text-muted mt-1" style="font-size: 0.75rem;">{{ departure.vehicle.registration }}</small>
-                        {% endif %}
-                    </div>
-                    <!-- Details trajet -->
-                    <div class="col-md-6 p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="text-center">
-                                <h4 class="fw-bold text-primary mb-0">{{ departure.time|time:"H:i" }}</h4>
-                                <small class="text-muted fw-semibold">{{ departure.segment_start_stop.city.name }}</small>
-                            </div>
-                            <div class="flex-grow-1 mx-4 position-relative">
-                                <hr class="border-secondary border-2 opacity-25">
-                                <div class="position-absolute top-50 start-50 translate-middle bg-white px-2 text-muted small text-nowrap">
-                                    {{ departure.line.name }}
-                                </div>
-                            </div>
-                            <div class="text-center">
-                                <h4 class="fw-bold text-primary mb-0">Arrivée</h4>
-                                <small class="text-muted fw-semibold">{{ departure.segment_end_stop.city.name }}</small>
-                            </div>
+        <div class="departure-card" 
+             data-agency="{{ departure.agency.id }}" 
+             data-timeslot="{{ departure.time_slot }}" 
+             data-comfort="{{ departure.comfort_type }}" 
+             data-price="{{ departure.segment_price }}" 
+             data-time="{{ departure.time|time:'H:i' }}" 
+             data-rating="{{ departure.rating }}" 
+             data-available="{{ departure.available_capacity }}">
+            
+            <!-- 1. En-tête de la carte : Agence + Note + Confort -->
+            <div class="card-header-trip">
+                <div class="d-flex align-items-center gap-2.5">
+                    {% if departure.agency.logo %}
+                        <img src="{{ departure.agency.logo.url }}" alt="{{ departure.agency.name }}" class="trip-agency-logo">
+                    {% else %}
+                        <div class="trip-agency-placeholder">
+                            {{ departure.agency.name|slice:":2"|upper }}
                         </div>
-                        <div class="d-flex gap-3 justify-content-center text-muted small">
-                            {% if departure.available_capacity > 0 %}
-                            <span class="d-inline-flex align-items-center gap-1.5 text-success fw-semibold">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"></path>
-                                    <path d="M3 11v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2Z"></path>
-                                    <path d="M5 18v2"></path>
-                                    <path d="M19 18v2"></path>
-                                </svg>
-                                <span>{{ departure.available_capacity }} place{{ departure.available_capacity|pluralize }} disponible{{ departure.available_capacity|pluralize }}</span>
-                            </span>
-                            {% else %}
-                            <span class="d-inline-flex align-items-center gap-1 text-danger fw-semibold">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <line x1="15" y1="9" x2="9" y2="15"></line>
-                                    <line x1="9" y1="9" x2="15" y2="15"></line>
-                                </svg>
-                                <span>Complet</span>
-                            </span>
-                            {% endif %}
+                    {% endif %}
+                    
+                    <div>
+                        <span class="trip-agency-name">{{ departure.agency.name }}</span>
+                        <div class="trip-rating-badge mt-0.5">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <span>{{ departure.rating }}</span>
+                            <span class="text-muted" style="font-size: 0.7rem;">({{ departure.reviews_count }})</span>
                         </div>
                     </div>
-                    <!-- Prix et action -->
-                    <div class="col-md-3 p-4 text-center border-start bg-white h-100 d-flex flex-column justify-content-center">
-                        {% if departure.segment_price == 0 %}
-                            <span class="badge bg-info bg-opacity-10 text-info fw-semibold mx-auto mb-2 px-3 py-1">Trajet promotionnel</span>
-                            <h3 class="fw-bold text-dark mb-3">Gratuit</h3>
-                        {% else %}
-                            <h3 class="fw-bold text-dark mb-3">{{ departure.segment_price|format_money }} <span class="fs-6 fw-semibold text-muted">FCFA</span></h3>
-                        {% endif %}
-                        {% if departure.available_capacity > 0 %}
-                        <a href="{% url 'bookings:book' departure.id %}?start={{ departure.segment_start_stop.id }}&end={{ departure.segment_end_stop.id }}" 
-                           class="btn btn-brand w-100 rounded-pill py-2 fw-semibold">
-                            Réserver
-                        </a>
-                        {% else %}
-                        <button class="btn btn-secondary w-100 rounded-pill py-2" disabled>Complet</button>
-                        {% endif %}
+                </div>
+
+                <div>
+                    {% if departure.is_vip %}
+                        <span class="badge-comfort badge-vip">Bus VIP</span>
+                    {% else %}
+                        <span class="badge-comfort badge-standard">Bus Standard</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 2. Corps du Trajet : Heure départ, itinéraire et terminus -->
+            <div class="card-body-trip">
+                <div class="trip-itinerary-grid">
+                    <!-- Point de Départ -->
+                    <div class="trip-point">
+                        <span class="trip-time">{{ departure.time|time:"H:i" }}</span>
+                        <span class="trip-city" title="{{ departure.segment_start_stop.city.name }}">{{ departure.segment_start_stop.city.name }}</span>
+                        <span class="trip-station-label">Départ quai</span>
+                    </div>
+
+                    <!-- Ligne / Flèche de Trajet -->
+                    <div class="trip-direction">
+                        <div class="trip-line-bar">
+                            <span class="trip-line-bullet"></span>
+                            <span class="trip-line-track"></span>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-primary flex-shrink-0">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                            <span class="trip-line-track"></span>
+                            <span class="trip-line-bullet"></span>
+                        </div>
+                        <div class="trip-line-name" title="{{ departure.line.name }}">
+                            {{ departure.line.name }}
+                        </div>
+                    </div>
+
+                    <!-- Point d'Arrivée -->
+                    <div class="trip-point trip-point-end">
+                        <span class="trip-time text-primary" style="font-size: 1.15rem; font-weight: 800;">Arrivée</span>
+                        <span class="trip-city" title="{{ departure.segment_end_stop.city.name }}">{{ departure.segment_end_stop.city.name }}</span>
+                        <span class="trip-station-label">Terminus</span>
                     </div>
                 </div>
             </div>
+
+            <!-- 3. Pied de Carte : Prix & Bouton Réserver -->
+            <div class="card-footer-trip">
+                <div class="trip-price-block">
+                    <span class="trip-price-label">Tarif par passager</span>
+                    <div class="trip-price-value">
+                        <span>{{ departure.segment_price|format_money }}</span>
+                        <span class="trip-currency">FCFA</span>
+                    </div>
+                    <!-- Mention de disponibilité sans afficher le nombre exact de places -->
+                    <span class="trip-availability-badge">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Places disponibles</span>
+                    </span>
+                </div>
+
+                <div>
+                    {% if departure.available_capacity > 0 %}
+                    <a href="{% url 'bookings:book' departure.id %}?start={{ departure.segment_start_stop.id }}&end={{ departure.segment_end_stop.id }}" 
+                       class="btn-trip-book">
+                        <span>Réserver</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </a>
+                    {% else %}
+                    <button class="btn btn-secondary rounded-pill px-4 py-2 fw-bold" disabled>Complet</button>
+                    {% endif %}
+                </div>
+            </div>
+
         </div>
         {% endfor %}
     </div>
 
-    <!-- Bannière bas de page pour inciter à explorer le jour suivant -->
-    <div class="card border-0 rounded-4 bg-white shadow-sm p-4 text-center mt-5">
-        <h5 class="fw-bold text-dark mb-1">Vous souhaitez voyager un autre jour ?</h5>
-        <p class="text-muted mb-3">Découvrez les départs programmés pour le jour suivant : {{ next_date_display }}.</p>
-        <div>
-            <a href="{% url 'travel:search' %}?departure_city={{ selected_departure }}&arrival_city={{ selected_arrival }}&date={{ next_date_str }}" 
-               class="btn btn-primary rounded-pill px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2">
-                <span>Voir les départs du {{ next_date_display }}</span>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                    <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-            </a>
+    <!-- Message si aucun départ après filtrage -->
+    <div id="noFilteredResultsBox" class="text-center py-5 bg-white rounded-4 shadow-sm p-4 d-none">
+        <div class="mb-3 d-inline-flex align-items-center justify-content-center rounded-circle bg-warning bg-opacity-10 text-warning" style="width: 70px; height: 70px;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
         </div>
+        <h5 class="fw-bold text-dark">Aucun départ ne correspond à vos filtres</h5>
+        <p class="text-muted small">Sélectionnez « Toutes les compagnies » ou élargissez les critères horaires.</p>
+        <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold" id="resetFiltersEmptyBtn">
+            Réinitialiser les filtres
+        </button>
     </div>
 
     {% else %}
-    <!-- Aucun résultat avec icône bus vectorielle et actions proactives -->
+    <!-- Aucun départ pour la date sélectionnée -->
     <div class="text-center py-5 bg-white rounded-4 shadow-sm p-4 p-md-5">
         <div class="mb-3 d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary" style="width: 80px; height: 80px;">
             <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -377,65 +782,132 @@
         </div>
         <h3 class="fw-bold text-dark">Aucun départ disponible le {{ selected_date_display }}</h3>
         <p class="text-muted mx-auto" style="max-width: 550px;">
-            Tous les bus programmés pour cette date sont complets ou déjà partis. Vous pouvez consulter les horaires du jour suivant ou modifier vos critères de voyage.
+            Tous les bus programmés pour cette date sont complets ou déjà partis. Vous pouvez consulter les horaires du jour suivant.
         </p>
-        <div class="d-flex flex-wrap justify-content-center gap-2 mt-4">
+        <div class="mt-4">
             <a href="{% url 'travel:search' %}?departure_city={{ selected_departure }}&arrival_city={{ selected_arrival }}&date={{ next_date_str }}" 
                class="btn btn-primary rounded-pill px-4 py-2.5 fw-semibold d-inline-flex align-items-center gap-2 shadow-xs">
-                <span>Voir les départs le lendemain ({{ next_date_display }})</span>
+                <span>Voir les départs du {{ next_date_display }}</span>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                     <polyline points="12 5 19 12 12 19"></polyline>
                 </svg>
             </a>
-            {% if prev_date_str %}
-            <a href="{% url 'travel:search' %}?departure_city={{ selected_departure }}&arrival_city={{ selected_arrival }}&date={{ prev_date_str }}" 
-               class="btn btn-outline-secondary rounded-pill px-3 py-2.5">
-                Consulter la veille
-            </a>
-            {% endif %}
-            <a href="{% url 'travel:home' %}" class="btn btn-light border rounded-pill px-4 py-2.5 fw-medium">
-                Modifier la recherche
-            </a>
         </div>
     </div>
     {% endif %}
+
 </div>
 
-<!-- Script pour le défilement (scroll) avec le bouton Next et Prev -->
+<!-- Script Moteur de Filtres & Slider -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const slider = document.getElementById('dateSlider');
-        const nextBtn = document.getElementById('sliderNextBtn');
-        const prevBtn = document.getElementById('sliderPrevBtn');
-        const activeCard = document.getElementById('activeDateCard');
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Défilement du Slider de Dates
+    const slider = document.getElementById('dateSlider');
+    const prevBtn = document.getElementById('sliderPrevBtn');
+    const nextBtn = document.getElementById('sliderNextBtn');
+    const activeCard = document.getElementById('activeDateCard');
 
-        if (slider) {
-            // Bouton Next : fait défiler vers la droite pour afficher les dates suivantes
-            if (nextBtn) {
-                nextBtn.addEventListener('click', function() {
-                    slider.scrollBy({ left: 240, behavior: 'smooth' });
-                });
-            }
+    if (slider && activeCard) {
+        slider.scrollLeft = activeCard.offsetLeft - slider.offsetWidth / 2 + activeCard.offsetWidth / 2;
+    }
+    if (prevBtn && slider) {
+        prevBtn.addEventListener('click', () => slider.scrollBy({ left: -200, behavior: 'smooth' }));
+    }
+    if (nextBtn && slider) {
+        nextBtn.addEventListener('click', () => slider.scrollBy({ left: 200, behavior: 'smooth' }));
+    }
 
-            // Bouton Prev : fait défiler vers la gauche
-            if (prevBtn) {
-                prevBtn.addEventListener('click', function() {
-                    slider.scrollBy({ left: -240, behavior: 'smooth' });
-                });
-            }
+    // 2. Moteur de Filtres Interactif par Menus Déroulants
+    const container = document.getElementById('departuresContainer');
+    if (!container) return;
 
-            // Centrer automatiquement la date active si elle est visible
-            if (activeCard) {
-                const cardLeft = activeCard.offsetLeft;
-                const cardWidth = activeCard.offsetWidth;
-                const sliderWidth = slider.offsetWidth;
-                slider.scrollTo({
-                    left: cardLeft - (sliderWidth / 2) + (cardWidth / 2),
-                    behavior: 'smooth'
-                });
+    const cards = Array.from(container.getElementsByClassName('departure-card'));
+    const resultsCountLabel = document.getElementById('resultsCountLabel');
+    const noResultsBox = document.getElementById('noFilteredResultsBox');
+    
+    const agencySelect = document.getElementById('filterAgencySelect');
+    const timeSelect = document.getElementById('filterTimeSelect');
+    const comfortSelect = document.getElementById('filterComfortSelect');
+    const sortSelect = document.getElementById('sortSelect');
+    
+    const resetBtn = document.getElementById('resetFiltersBtn');
+    const resetEmptyBtn = document.getElementById('resetFiltersEmptyBtn');
+
+    function applyFilters() {
+        const agencyVal = agencySelect ? agencySelect.value : '';
+        const timeVal = timeSelect ? timeSelect.value : '';
+        const comfortVal = comfortSelect ? comfortSelect.value : '';
+
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const agency = card.getAttribute('data-agency');
+            const timeslot = card.getAttribute('data-timeslot');
+            const comfort = card.getAttribute('data-comfort');
+
+            const matchAgency = !agencyVal || agency === agencyVal;
+            const matchTime = !timeVal || timeslot === timeVal;
+            const matchComfort = !comfortVal || comfort === comfortVal;
+
+            if (matchAgency && matchTime && matchComfort) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
             }
+        });
+
+        if (resultsCountLabel) {
+            resultsCountLabel.textContent = `${visibleCount} départ${visibleCount > 1 ? 's' : ''} disponible${visibleCount > 1 ? 's' : ''}`;
         }
-    });
+
+        if (noResultsBox) {
+            noResultsBox.classList.toggle('d-none', visibleCount > 0);
+        }
+
+        applySorting();
+    }
+
+    function applySorting() {
+        if (!sortSelect) return;
+        const sortVal = sortSelect.value;
+        const visibleCards = cards.filter(c => c.style.display !== 'none');
+
+        visibleCards.sort((a, b) => {
+            if (sortVal === 'price-asc') {
+                const pA = parseFloat(a.getAttribute('data-price').replace(',', '.')) || 0;
+                const pB = parseFloat(b.getAttribute('data-price').replace(',', '.')) || 0;
+                return pA - pB;
+            } else if (sortVal === 'time-asc') {
+                return (a.getAttribute('data-time') || '').localeCompare(b.getAttribute('data-time') || '');
+            } else if (sortVal === 'rating-desc') {
+                const rA = parseFloat(a.getAttribute('data-rating').replace(',', '.')) || 0;
+                const rB = parseFloat(b.getAttribute('data-rating').replace(',', '.')) || 0;
+                return rB - rA;
+            }
+            return 0;
+        });
+
+        visibleCards.forEach(c => container.appendChild(c));
+    }
+
+    // Écouteurs sur les menus déroulants
+    if (agencySelect) agencySelect.addEventListener('change', applyFilters);
+    if (timeSelect) timeSelect.addEventListener('change', applyFilters);
+    if (comfortSelect) comfortSelect.addEventListener('change', applyFilters);
+    if (sortSelect) sortSelect.addEventListener('change', applySorting);
+
+    function resetAllFilters() {
+        if (agencySelect) agencySelect.value = '';
+        if (timeSelect) timeSelect.value = '';
+        if (comfortSelect) comfortSelect.value = '';
+        if (sortSelect) sortSelect.value = 'time-asc';
+        applyFilters();
+    }
+
+    if (resetBtn) resetBtn.addEventListener('click', resetAllFilters);
+    if (resetEmptyBtn) resetEmptyBtn.addEventListener('click', resetAllFilters);
+});
 </script>
 {% endblock %}

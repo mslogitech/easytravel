@@ -11,7 +11,9 @@ def manifest_view(request):
             content = f.read()
     except FileNotFoundError:
         content = "{}"
-    return HttpResponse(content, content_type='application/manifest+json')
+    response = HttpResponse(content, content_type='application/manifest+json')
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return response
 
 def service_worker_view(request):
     """Sert le Service Worker à la racine avec la portée (scope) globale autorisée."""
@@ -23,6 +25,7 @@ def service_worker_view(request):
         content = ""
     response = HttpResponse(content, content_type='application/javascript')
     response['Service-Worker-Allowed'] = '/'
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     return response
 
 def offline_view(request):

@@ -59,7 +59,7 @@ def format_phone(phone_str):
         formatted_num = f"{core_cmr[:3]} {core_cmr[3:6]} {core_cmr[6:]}"
         return mark_safe(
             f'<div class="d-inline-flex align-items-center gap-1.5 text-nowrap">'
-            f'<span class="badge border bg-light text-dark px-1.5 py-0.5 fw-semibold" style="font-size: 0.72rem;">🇨🇲 +237</span>'
+            f'<span class="badge border bg-light text-dark px-1.5 py-0.5 fw-semibold" style="font-size: 0.72rem;">+237</span>'
             f'<span class="font-monospace text-dark fw-medium" style="font-size: 0.84rem;">{formatted_num}</span>'
             f'</div>'
         )
@@ -67,6 +67,8 @@ def format_phone(phone_str):
     # 2. Cas Allemagne / Europe (mobile allemand 015x, 016x, 017x ou +49)
     if digits.startswith('+49'):
         core = digits[3:]
+        if core.startswith('0'):
+            core = core[1:]
         # ex: +49 176 3532 1633
         if len(core) >= 10:
             formatted = f"{core[:3]} {core[3:7]} {core[7:]}"
@@ -75,7 +77,7 @@ def format_phone(phone_str):
             formatted = " ".join(chunks)
         return mark_safe(
             f'<div class="d-inline-flex align-items-center gap-1.5 text-nowrap">'
-            f'<span class="badge border bg-light text-dark px-1.5 py-0.5 fw-semibold" style="font-size: 0.72rem;">🇩🇪 +49</span>'
+            f'<span class="badge border bg-light text-dark px-1.5 py-0.5 fw-semibold" style="font-size: 0.72rem;">+49</span>'
             f'<span class="font-monospace text-dark fw-medium" style="font-size: 0.84rem;">{formatted}</span>'
             f'</div>'
         )
@@ -85,7 +87,7 @@ def format_phone(phone_str):
         formatted = f"{core[:3]} {core[3:7]} {core[7:]}"
         return mark_safe(
             f'<div class="d-inline-flex align-items-center gap-1.5 text-nowrap">'
-            f'<span class="badge border bg-light text-dark px-1.5 py-0.5 fw-semibold" style="font-size: 0.72rem;">🇩🇪 +49</span>'
+            f'<span class="badge border bg-light text-dark px-1.5 py-0.5 fw-semibold" style="font-size: 0.72rem;">+49</span>'
             f'<span class="font-monospace text-dark fw-medium" style="font-size: 0.84rem;">{formatted}</span>'
             f'</div>'
         )
@@ -93,10 +95,12 @@ def format_phone(phone_str):
     # 3. Cas France (+33 ou 06/07)
     if digits.startswith('+33'):
         core = digits[3:]
+        if core.startswith('0'):
+            core = core[1:]
         chunks = [core[0]] + [core[i:i+2] for i in range(1, len(core), 2)]
         return mark_safe(
             f'<div class="d-inline-flex align-items-center gap-1.5 text-nowrap">'
-            f'<span class="badge border bg-light text-dark px-1.5 py-0.5 fw-semibold" style="font-size: 0.72rem;">🇫🇷 +33</span>'
+            f'<span class="badge border bg-light text-dark px-1.5 py-0.5 fw-semibold" style="font-size: 0.72rem;">+33</span>'
             f'<span class="font-monospace text-dark fw-medium" style="font-size: 0.84rem;">{" ".join(chunks)}</span>'
             f'</div>'
         )
@@ -105,7 +109,7 @@ def format_phone(phone_str):
         chunks = [core[0]] + [core[i:i+2] for i in range(1, len(core), 2)]
         return mark_safe(
             f'<div class="d-inline-flex align-items-center gap-1.5 text-nowrap">'
-            f'<span class="badge border bg-light text-dark px-1.5 py-0.5 fw-semibold" style="font-size: 0.72rem;">🇫🇷 +33</span>'
+            f'<span class="badge border bg-light text-dark px-1.5 py-0.5 fw-semibold" style="font-size: 0.72rem;">+33</span>'
             f'<span class="font-monospace text-dark fw-medium" style="font-size: 0.84rem;">{" ".join(chunks)}</span>'
             f'</div>'
         )

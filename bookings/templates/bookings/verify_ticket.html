@@ -1,0 +1,310 @@
+{% extends "travel/base.html" %}
+{% load agency_extras %}
+
+{% block title %}Vérification Officielle de Billet - {{ booking.reference }} | EasyTravel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .verify-card {
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        background: #ffffff;
+    }
+    .verify-hero-valid {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        color: #ffffff;
+    }
+    .verify-hero-boarded {
+        background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+        color: #ffffff;
+    }
+    .verify-hero-unpaid {
+        background: linear-gradient(135deg, #b45309 0%, #f59e0b 100%);
+        color: #ffffff;
+    }
+    .verify-hero-cancelled {
+        background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%);
+        color: #ffffff;
+    }
+    .verify-hero-expired {
+        background: linear-gradient(135deg, #475569 0%, #64748b 100%);
+        color: #ffffff;
+    }
+    .info-badge-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        color: #64748b;
+    }
+    .info-badge-val {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .trip-route-display {
+        background: #f8fafc;
+        border-radius: 14px;
+        border: 1.5px dashed #cbd5e1;
+        padding: 16px;
+    }
+    .seal-box {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        color: #166534;
+        border-radius: 12px;
+    }
+    .seal-box-warning {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #92400e;
+        border-radius: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4 py-md-5" style="max-width: 680px;">
+    
+    <!-- Messages Django -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-4 shadow-sm mb-4" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="verify-card">
+        
+        <!-- En-tête Statut -->
+        {% if is_valid_for_boarding %}
+            <div class="verify-hero-valid p-4 text-center">
+                <div class="d-inline-flex p-3 rounded-circle bg-white bg-opacity-20 mb-2">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+                <h4 class="fw-bold mb-1">BILLET PAYÉ &amp; VALIDE</h4>
+                <p class="mb-0 opacity-90 small">Prêt pour l'embarquement à bord du car</p>
+            </div>
+        {% elif is_boarded %}
+            <div class="verify-hero-boarded p-4 text-center">
+                <div class="d-inline-flex p-3 rounded-circle bg-white bg-opacity-20 mb-2">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="8.5" cy="7" r="4"></circle>
+                        <polyline points="17 11 19 13 23 9"></polyline>
+                    </svg>
+                </div>
+                <h4 class="fw-bold mb-1">PASSAGER DÉJÀ EMBARQUÉ</h4>
+                <p class="mb-0 opacity-90 small">Ce billet a déjà été composté au quai de départ</p>
+            </div>
+        {% elif not is_paid %}
+            <div class="verify-hero-unpaid p-4 text-center">
+                <div class="d-inline-flex p-3 rounded-circle bg-white bg-opacity-20 mb-2">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <h4 class="fw-bold mb-1">BILLET NON RÉGLÉ</h4>
+                <p class="mb-0 opacity-90 small">Embarquement strictement interdit tant que le billet n'est pas payé</p>
+            </div>
+        {% elif is_cancelled %}
+            <div class="verify-hero-cancelled p-4 text-center">
+                <div class="d-inline-flex p-3 rounded-circle bg-white bg-opacity-20 mb-2">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                </div>
+                <h4 class="fw-bold mb-1">BILLET ANNULÉ</h4>
+                <p class="mb-0 opacity-90 small">Cette réservation a été annulée et n'est plus valable</p>
+            </div>
+        {% else %}
+            <div class="verify-hero-expired p-4 text-center">
+                <div class="d-inline-flex p-3 rounded-circle bg-white bg-opacity-20 mb-2">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <h4 class="fw-bold mb-1">VOYAGE EXPIRÉ</h4>
+                <p class="mb-0 opacity-90 small">La date et l'horaire de ce départ sont dépassés</p>
+            </div>
+        {% endif %}
+
+        <div class="p-4 p-md-4">
+            
+            <!-- Sceau d'Authentification Cryptographique -->
+            {% if is_signature_valid %}
+                <div class="seal-box p-3 mb-4 d-flex align-items-center gap-3">
+                    <div class="text-success fs-3">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="fw-bold small">Sceau Officiel EasyTravel Certifié</div>
+                        <div class="text-muted" style="font-size: 0.76rem;">Signature HMAC SHA-256 authentique et intègre émise par le serveur.</div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="seal-box-warning p-3 mb-4 d-flex align-items-center gap-3">
+                    <div class="text-warning fs-3">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="fw-bold small">Signature Non Conforme ou Absente</div>
+                        <div class="text-muted" style="font-size: 0.76rem;">Ce QR code a été scanné sans clé de signature officielle valide.</div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Trajet Récapitulatif -->
+            <div class="trip-route-display mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-dark text-white rounded-pill px-3 py-1 fw-bold">
+                        {{ booking.departure.agency.name }}
+                    </span>
+                    <span class="text-muted small fw-semibold">
+                        Ligne : {{ booking.departure.line.name }}
+                    </span>
+                </div>
+                <div class="row align-items-center text-center my-3">
+                    <div class="col-5">
+                        <div class="info-badge-label">Départ</div>
+                        <div class="fs-5 fw-bold text-dark">{{ start_city }}</div>
+                    </div>
+                    <div class="col-2 text-muted">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </div>
+                    <div class="col-5">
+                        <div class="info-badge-label">Destination</div>
+                        <div class="fs-5 fw-bold text-dark">{{ end_city }}</div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between pt-2 border-top text-muted small">
+                    <span>Date : <strong>{{ booking.departure.date|date:"d/m/Y" }}</strong></span>
+                    <span>Heure : <strong>{{ booking.departure.time|time:"H:i" }}</strong></span>
+                </div>
+            </div>
+
+            <!-- Grille de Détails -->
+            <div class="row g-3 mb-4">
+                <div class="col-sm-6">
+                    <div class="p-3 bg-light rounded-3 h-100">
+                        <div class="info-badge-label mb-1">Passager Principal</div>
+                        <div class="info-badge-val">{{ booking.traveler_name }}</div>
+                        <div class="text-muted small">{{ booking.traveler_phone }}</div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="p-3 bg-light rounded-3 h-100">
+                        <div class="info-badge-label mb-1">Référence Billet</div>
+                        <div class="info-badge-val text-primary font-monospace">{{ booking.reference }}</div>
+                        <div class="text-muted small">{{ booking.seats_reserved }} place{{ booking.seats_reserved|pluralize }} réservée{{ booking.seats_reserved|pluralize }}</div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="p-3 bg-light rounded-3 h-100">
+                        <div class="info-badge-label mb-1">Pièce d'Identité</div>
+                        <div class="info-badge-val">
+                            {% if booking.id_number %}
+                                {{ booking.get_id_type_display }} N° {{ booking.id_number }}
+                            {% else %}
+                                <span class="text-muted fw-normal">Contrôle physique au guichet</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="p-3 bg-light rounded-3 h-100">
+                        <div class="info-badge-label mb-1">Règlement Financier</div>
+                        <div class="info-badge-val">
+                            {% if is_paid %}
+                                <span class="text-success">Payé ({{ booking.total_amount|format_money }} FCFA)</span>
+                                <div class="text-muted small font-monospace">{{ booking.payment_operator|default:booking.get_payment_method_display }}</div>
+                            {% else %}
+                                <span class="text-warning-emphasis">À Régler ({{ booking.total_amount|format_money }} FCFA)</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Agent d'Agence -->
+            {% if is_agency_agent %}
+                <div class="card border border-primary-subtle bg-primary bg-opacity-10 rounded-4 p-3 mb-4">
+                    <h6 class="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                        </svg>
+                        <span>Espace Contrôleur de Quai ({{ booking.departure.agency.name }})</span>
+                    </h6>
+                    {% if is_valid_for_boarding %}
+                        <p class="text-muted small mb-3">Le titre de transport est certifié et le paiement est validé. Vous pouvez autoriser le passager à monter à bord :</p>
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="board">
+                            <button type="submit" class="btn btn-success w-100 py-2.5 rounded-pill fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                <span>Valider l'Embarquement Immédiat</span>
+                            </button>
+                        </form>
+                    {% elif is_boarded %}
+                        <div class="alert alert-info py-2 px-3 mb-0 rounded-3 small">
+                            Ce passager a déjà été enregistré à bord du bus.
+                        </div>
+                    {% elif not is_paid %}
+                        <div class="alert alert-danger py-2 px-3 mb-0 rounded-3 small fw-semibold">
+                            ⚠️ Attention : Billet non payé ! Veuillez diriger le voyageur vers la caisse du guichet avant tout embarquement.
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            <!-- Action Passager / Client non payé -->
+            {% if not is_paid and not is_cancelled %}
+                <div class="text-center py-2">
+                    <a href="{% url 'payments:initiate' booking.id %}" class="btn btn-warning btn-lg rounded-pill px-4 fw-bold shadow-sm w-100">
+                        Procéder au Paiement Sécurisé ({{ booking.total_amount|format_money }} FCFA) →
+                    </a>
+                </div>
+            {% endif %}
+
+            <!-- Lien consultation billet complet si propriétaire -->
+            {% if request.user == booking.user or is_agency_agent %}
+                <div class="text-center mt-3">
+                    <a href="{% url 'bookings:confirmation' booking.reference %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                        Voir le billet officiel complet &amp; Facture
+                    </a>
+                </div>
+            {% endif %}
+
+        </div>
+
+        <!-- Pied de page officiel -->
+        <div class="bg-light px-4 py-3 border-top text-center text-muted" style="font-size: 0.75rem;">
+            EasyTravel Cameroun • Système Certifié de Contrôle de Billetterie Interurbaine
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

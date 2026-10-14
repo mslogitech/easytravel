@@ -83,7 +83,13 @@
         </tr>
         <tr>
             <th>Pièce d'Identité</th>
-            <td>{{ booking.get_id_type_display|default:booking.id_type }} N° {{ booking.id_number }}</td>
+            <td>
+                {% if booking.id_number %}
+                    {{ booking.get_id_type_display|default:booking.id_type }} N° {{ booking.id_number }}
+                {% else %}
+                    Non renseignée (Contrôle physique au guichet)
+                {% endif %}
+            </td>
         </tr>
         {% if booking.companions %}
         <tr>

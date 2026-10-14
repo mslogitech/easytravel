@@ -98,10 +98,16 @@ def verify_activation_token(uidb64, token):
     return None
 
 
-def send_ticket_confirmation_email(request, booking):
+def send_ticket_confirmation_email(request, booking, force=False):
     """
     Envoie un email de confirmation de paiement et délivrance de billet officiel au voyageur.
+    Refuse l'envoi si le billet a déjà été validé à l'embarquement ou si la date de voyage est expirée.
     """
+    can_send, reason = booking.can_send_ticket_email
+    if not can_send and not force:
+        logger.warning(f"Refus d'envoi d'e-mail de billet pour la réservation {booking.reference} : {reason}")
+        return False
+
     recipient_email = booking.traveler_email or (booking.user.email if booking.user else None)
     if not recipient_email:
         logger.info(f"Aucune adresse email trouvée pour la réservation {booking.reference}, email non envoyé.")
@@ -123,18 +129,8 @@ def send_ticket_confirmation_email(request, booking):
         from xhtml2pdf import pisa
         from django.core.mail import EmailMultiAlternatives
         
-        # Générer QR Code
-        raw_payload = f"REF:{booking.reference}|NOM:{booking.traveler_name}|PIECE:{booking.id_type}-{booking.id_number}|TRAJET:{start_city}-{end_city}|DATE:{booking.departure.date}|PLACES:{booking.seats_reserved}"
-        signature = hmac.new(settings.SECRET_KEY.encode(), raw_payload.encode(), hashlib.sha256).hexdigest()[:12]
-        qr_payload = f"{raw_payload}|SIG:{signature}"
-        qr = qrcode.QRCode(version=1, box_size=10, border=4)
-        qr.add_data(qr_payload)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
-        qr_buffer = BytesIO()
-        img.save(qr_buffer, format="PNG")
-        qr_base64 = base64.b64encode(qr_buffer.getvalue()).decode("utf-8")
-        qr_code_url = f"data:image/png;base64,{qr_base64}"
+        # Générer QR Code officiel avec URL de vérification et signature cryptographique
+        qr_code_url = booking.generate_qr_code_base64(request=request)
 
         context = {
             'booking': booking,

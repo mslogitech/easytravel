@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
-{% load static %}
+{% load static agency_extras %}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
@@ -24,15 +24,15 @@
     
     <style>
         :root {
-            --brand-primary: #2563eb;
-            --brand-primary-hover: #1d4ed8;
+            --brand-primary: #1d4ed8;
+            --brand-primary-hover: #1e40af;
             --brand-dark: #0f172a;
         }
 
         html, body { 
             font-family: 'Outfit', sans-serif; 
             background-color: #f8fafc; 
-            color: #1e293b; 
+            color: #0f172a; 
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
             scroll-behavior: smooth;
@@ -40,22 +40,22 @@
 
         /* Barre de navigation */
         .navbar-custom { 
-            background: rgba(255, 255, 255, 0.95) !important; 
-            backdrop-filter: blur(12px); 
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(0,0,0,0.06); 
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.98) !important; 
+            backdrop-filter: blur(14px); 
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1.5px solid #e2e8f0; 
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
             transition: all 0.3s ease;
         }
         .navbar-brand { 
-            font-weight: 700; 
+            font-weight: 800; 
             color: var(--brand-primary) !important; 
-            font-size: 1.45rem; 
+            font-size: 1.5rem; 
             letter-spacing: -0.5px; 
         }
         .nav-link { 
-            font-weight: 500; 
-            color: #475569 !important; 
+            font-weight: 600; 
+            color: #0f172a !important; 
             transition: all 0.2s ease; 
         }
         .nav-link:hover { 
@@ -153,11 +153,19 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-center gap-2">
                     <li class="nav-item"><a class="nav-link px-2" href="/">Accueil</a></li>
-                    <li class="nav-item"><a class="nav-link px-2" href="#agences">Agences Partenaires</a></li>
                     <li class="nav-item"><a class="nav-link px-2" href="#faq">FAQ</a></li>
                     <li class="nav-item"><a class="nav-link px-2" href="#contact">Contact</a></li>
                     
                     {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link px-2.5 py-1.5 rounded-pill bg-success bg-opacity-10 text-success fw-bold d-inline-flex align-items-center gap-1.5 border border-success border-opacity-25" href="{% url 'accounts:my_bookings' %}" title="Votre portefeuille EasyTravel">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                                    <line x1="2" y1="10" x2="22" y2="10"></line>
+                                </svg>
+                                <span>Portefeuille : {{ user.wallet_balance|default:0|format_money }} FCFA</span>
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link px-2 fw-semibold text-primary d-inline-flex align-items-center gap-1.5 text-nowrap" href="{% url 'accounts:my_bookings' %}">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -180,6 +188,18 @@
                                 <span>{{ user.first_name|default:user.username }}</span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 mt-2">
+                                <li>
+                                    <a class="dropdown-item py-2 d-flex align-items-center justify-content-between" href="{% url 'accounts:my_bookings' %}">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-success">
+                                                <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                                                <line x1="2" y1="10" x2="22" y2="10"></line>
+                                            </svg>
+                                            <span>Mon Portefeuille</span>
+                                        </div>
+                                        <span class="badge bg-success bg-opacity-10 text-success fw-bold">{{ user.wallet_balance|default:0|format_money }} FCFA</span>
+                                    </a>
+                                </li>
                                 <li>
                                     <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="{% url 'accounts:my_bookings' %}">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary">

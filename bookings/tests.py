@@ -100,5 +100,192 @@ class BookingModelTest(TestCase):
         self.departure.refresh_from_db()
         self.assertEqual(self.departure.available_capacity, initial_capacity - 2)
 
+    def test_qr_security_signature_and_generation(self):
+        booking = Booking.objects.create(
+            user=self.user,
+            departure=self.departure,
+            departure_stop=self.stop_1,
+            arrival_stop=self.stop_2,
+            traveler_name="Samuel Eto'o",
+            traveler_phone="699112233",
+            traveler_email="samuel@test.com",
+            id_type="cni",
+            id_number="101010101",
+            seats_reserved=2,
+            total_amount=10000,
+            status='confirmed',
+            payment_status='paid'
+        )
+        sig = booking.get_security_signature()
+        self.assertTrue(sig)
+        self.assertTrue(booking.verify_security_signature(sig))
+        self.assertFalse(booking.verify_security_signature("fake_sig_123"))
+        
+        # Test generation URL & QR Code Base64
+        verify_url = booking.get_verification_url()
+        self.assertIn(booking.reference, verify_url)
+        self.assertIn(f"sig={sig}", verify_url)
+        
+        qr_b64 = booking.generate_qr_code_base64()
+        self.assertTrue(qr_b64.startswith("data:image/png;base64,"))
+
+    def test_verify_ticket_view(self):
+        from django.test import Client
+        from django.urls import reverse
+        client = Client()
+        
+        booking = Booking.objects.create(
+            user=self.user,
+            departure=self.departure,
+            departure_stop=self.stop_1,
+            arrival_stop=self.stop_2,
+            traveler_name="Samuel Eto'o",
+            traveler_phone="699112233",
+            traveler_email="samuel@test.com",
+            id_type="cni",
+            id_number="101010101",
+            seats_reserved=2,
+            total_amount=10000,
+            status='confirmed',
+            payment_status='paid'
+        )
+        sig = booking.get_security_signature()
+        url = reverse('bookings:verify_ticket', kwargs={'reference': booking.reference})
+        
+        # Avec signature valide
+        response = client.get(f"{url}?sig={sig}")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['is_signature_valid'])
+        self.assertTrue(response.context['is_valid_for_boarding'])
+
+        # Avec fausse signature
+        response = client.get(f"{url}?sig=invalid_signature")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context['is_signature_valid'])
+
+    def test_ajax_scan_ticket_blocks_unpaid_booking(self):
+        from django.test import Client
+        from django.urls import reverse
+        client = Client()
+        client.force_login(self.owner)
+        
+        # Création d'un billet non payé
+        booking = Booking.objects.create(
+            user=self.user,
+            departure=self.departure,
+            departure_stop=self.stop_1,
+            arrival_stop=self.stop_2,
+            traveler_name="Passager Fraudeur",
+            traveler_phone="699112233",
+            traveler_email="fraude@test.com",
+            seats_reserved=1,
+            total_amount=5000,
+            status='pending',
+            payment_status='pending'
+        )
+        scan_url = reverse('agencies:ajax_scan_ticket')
+        verify_url = booking.get_verification_url()
+        
+        # Tentative de scan du QR code non payé
+        response = client.post(scan_url, {'payload': verify_url})
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertEqual(data['status'], 'error')
+        self.assertIn("n'est PAS réglé", data['message'])
+        
+        # Le statut ne doit pas être passé à 'boarded'
+        booking.refresh_from_db()
+        self.assertNotEqual(booking.status, 'boarded')
+
+    def test_ajax_scan_ticket_allows_paid_booking(self):
+        from django.test import Client
+        from django.urls import reverse
+        client = Client()
+        client.force_login(self.owner)
+        
+        # Création d'un billet payé
+        booking = Booking.objects.create(
+            user=self.user,
+            departure=self.departure,
+            departure_stop=self.stop_1,
+            arrival_stop=self.stop_2,
+            traveler_name="Passager Honnête",
+            traveler_phone="699112233",
+            traveler_email="honnete@test.com",
+            seats_reserved=1,
+            total_amount=5000,
+            status='confirmed',
+            payment_status='paid'
+        )
+        scan_url = reverse('agencies:ajax_scan_ticket')
+        verify_url = booking.get_verification_url()
+        
+        # Scan du QR code officiel
+        response = client.post(scan_url, {'payload': verify_url})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        
+        # Le statut passe bien à 'boarded'
+        booking.refresh_from_db()
+        self.assertEqual(booking.status, 'boarded')
+        
+        # Un second scan doit signaler qu'il a déjà embarqué
+        response2 = client.post(scan_url, {'payload': verify_url})
+        self.assertEqual(response2.status_code, 200)
+        data2 = response2.json()
+        self.assertEqual(data2['status'], 'warning')
+        self.assertIn("DÉJÀ embarqué", data2['message'])
+
+    def test_booking_admin_form_and_api(self):
+        from bookings.admin import BookingAdminForm
+        from django.test import Client
+        
+        # Test 1 : Validation et auto-complétion du formulaire admin
+        form_data = {
+            'user': self.user.id,
+            'departure': self.departure.id,
+            'departure_stop': self.stop_1.id,
+            'arrival_stop': self.stop_2.id,
+            'seats_reserved': 2,
+            'status': 'confirmed',
+            'payment_status': 'paid',
+        }
+        form = BookingAdminForm(data=form_data)
+        self.assertTrue(form.is_valid(), form.errors)
+        cleaned = form.cleaned_data
+        
+        # Le nom, le tél, l'email doivent être automatiquement tirés du User
+        self.assertEqual(cleaned['traveler_name'], self.user.username)
+        self.assertEqual(cleaned['traveler_phone'], self.user.phone)
+        self.assertEqual(cleaned['traveler_email'], self.user.email)
+        
+        # Le tarif doit être calculé automatiquement
+        pricing = self.departure.calculate_pricing(self.stop_1, self.stop_2)
+        expected_total = pricing['total_price'] * 2
+        self.assertEqual(cleaned['total_amount'], expected_total)
+        
+        # Test 2 : API User Info
+        admin_user = User.objects.create_superuser('admin_test', 'admin@test.cm', 'password123')
+        client = Client()
+        client.force_login(admin_user)
+        
+        res_user = client.get(f'/admin/bookings/booking/api/user-info/{self.user.id}/')
+        self.assertEqual(res_user.status_code, 200)
+        self.assertEqual(res_user.json()['traveler_phone'], self.user.phone)
+        
+        # Test 3 : API Departure Info
+        res_dep = client.get(f'/admin/bookings/booking/api/departure-info/{self.departure.id}/')
+        self.assertEqual(res_dep.status_code, 200)
+        self.assertEqual(len(res_dep.json()['stops']), 2)
+        
+        # Test 4 : API Calculate Price
+        res_price = client.get(f'/admin/bookings/booking/api/calculate-price/?departure_id={self.departure.id}&start_id={self.stop_1.id}&end_id={self.stop_2.id}&seats=3')
+        self.assertEqual(res_price.status_code, 200)
+        expected_3_seats = pricing['total_price'] * 3
+        self.assertEqual(res_price.json()['total_amount'], round(expected_3_seats, 2))
+
+
+
 
 

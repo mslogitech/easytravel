@@ -19,6 +19,7 @@ db.sqlite3
 .env
 .env.local
 .env.*.local
+*.env
 
 # Static & Media files
 staticfiles/

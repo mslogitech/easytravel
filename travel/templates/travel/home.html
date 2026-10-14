@@ -1,34 +1,38 @@
 {% extends 'travel/base.html' %}
 {% load static %}
 
-{% block title %}Réservez vos tickets de bus{% endblock %}
+{% block title %}Réservez vos tickets de bus au Cameroun - EasyTravel{% endblock %}
 
 {% block extra_css %}
+<!-- Tom Select CDN pour recherche textuelle intégrée dans les listes déroulantes -->
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+
 <style>
-    .hero-section {
+    /* Hero Section avec Carte du Cameroun animée en arrière-plan */
+    .hero-section-modern {
         position: relative;
-        height: 85vh;
-        min-height: 620px;
+        min-height: 640px;
         background-color: #0f172a;
         background-image: url('{% static "images/cameroon_map.jpg" %}');
         background-repeat: no-repeat;
         background-position: center top;
         background-size: cover;
+        animation: map-tour 60s infinite alternate ease-in-out;
         display: flex;
         align-items: center;
-        margin-top: -76px; /* pull up under transparent navbar */
+        padding-top: 50px;
+        padding-bottom: 90px;
+        margin-top: -76px;
         overflow: hidden;
-        animation: map-tour 60s infinite alternate ease-in-out;
     }
-    .hero-overlay {
+    .hero-overlay-map {
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.85) 50%, rgba(30, 58, 138, 0.70) 100%),
-                    radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.90) 0%, rgba(15, 23, 42, 0.80) 45%, rgba(30, 58, 138, 0.70) 100%),
+                    radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.20) 0%, transparent 50%);
         pointer-events: none;
         z-index: 1;
     }
-    
     @keyframes map-tour {
         0%   { background-position: center top; background-size: 110%; } /* Extrême-Nord */
         25%  { background-position: center 40%; background-size: 130%; } /* Adamaoua / Centre */
@@ -36,298 +40,696 @@
         75%  { background-position: 80% 80%; background-size: 150%; } /* Est */
         100% { background-position: center bottom; background-size: 120%; } /* Sud */
     }
-    .hero-content {
-        position: relative;
-        z-index: 2;
-        color: white;
-    }
-    .hero-title {
-        font-size: 3.5rem;
-        font-weight: 700;
-        letter-spacing: -1px;
-        line-height: 1.1;
-        margin-bottom: 1.5rem;
-        text-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-    
-    /* Styles pour la barre de recherche (Focus et bordures) */
-    .search-box .input-group {
-        border: 1.5px solid #dee2e6;
-        border-radius: 10px;
-        transition: all 0.2s ease;
-        background: #ffffff;
-    }
-    .search-box .input-group:focus-within {
-        border-color: #2563eb !important;
-        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
-    }
-    .search-box .input-group .form-control,
-    .search-box .input-group .form-select,
-    .search-box .input-group .input-group-text {
-        border: none !important;
-        background: transparent !important;
-    }
-    .search-box .input-group .form-control:focus,
-    .search-box .input-group .form-select:focus {
-        box-shadow: none !important;
-    }
-    
-    /* Glassmorphism search box */
-    .search-box {
+
+    .hero-badge-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
         background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(255, 255, 255, 0.35);
-        border-radius: 20px;
-        padding: 30px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
-    }
-    .search-box label {
-        color: rgba(255,255,255,0.95);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 0.4rem 1rem;
+        border-radius: 100px;
+        color: #ffffff;
+        font-size: 0.85rem;
         font-weight: 600;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .search-box .form-select, .search-box .form-control {
-        background: rgba(255,255,255,0.95);
-        border: none;
-        border-radius: 10px;
-        padding: 12px 15px;
-        font-weight: 500;
-        color: #1e293b;
-    }
-    .search-box .form-select:focus, .search-box .form-control:focus {
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.35);
+        margin-bottom: 1.25rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
     }
 
-    /* Rendu Mobile Adaptatif Fluide */
-    @media (max-width: 991.98px) {
-        .hero-section {
-            height: auto !important;
-            min-height: auto !important;
-            padding-top: 105px !important;
-            padding-bottom: 55px !important;
-            margin-top: -76px;
-        }
-        .hero-title {
-            font-size: 2.25rem !important;
-            letter-spacing: -0.5px !important;
-            margin-bottom: 1rem !important;
-        }
-        .search-box {
-            padding: 22px 18px !important;
-            border-radius: 18px !important;
-            margin-top: 10px !important;
-        }
-        .features-section {
-            padding: 50px 0 !important;
-        }
+    .hero-title-modern {
+        font-size: 3.4rem;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+        color: #ffffff;
+        margin-bottom: 1.25rem;
+        text-shadow: 0 4px 16px rgba(15, 23, 42, 0.25);
     }
-    
-    .features-section {
-        padding: 90px 0;
-        background-color: #ffffff;
+    .hero-subtitle-modern {
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 1.25rem;
+        font-weight: 400;
+        line-height: 1.6;
+        max-width: 680px;
+        margin: 0 auto;
     }
-    .feature-card {
-        text-align: center;
-        padding: 32px 24px;
-        border-radius: 18px;
-        border: 1px solid #f1f5f9;
+
+    /* Boîte de recherche flottante premium */
+    .search-card-floating {
         background: #ffffff;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.02);
-        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        border-radius: 24px;
+        padding: 2rem 2.25rem;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        position: relative;
+        z-index: 10;
+        margin-top: 2rem;
     }
-    .feature-card:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 16px 30px rgba(0,0,0,0.06);
-    }
-    .feature-icon-wrapper {
-        width: 68px;
-        height: 68px;
-        margin: 0 auto 20px auto;
+
+    /* Bouton d'inversion des villes (Swap) */
+    .swap-cities-btn {
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
+        background: #eff6ff;
+        border: 1.5px solid #bfdbfe;
+        color: #2563eb;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(37, 99, 235, 0.08);
-        color: #2563eb;
-        transition: background-color 0.2s ease, transform 0.2s ease;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+        margin: auto;
     }
-    .feature-card:hover .feature-icon-wrapper {
+    .swap-cities-btn:hover {
         background: #2563eb;
         color: #ffffff;
-        transform: scale(1.05);
+        transform: rotate(180deg) scale(1.08);
+    }
+
+    /* Personnalisation Tom Select pour recherche textuelle de ville */
+    .ts-control {
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 14px !important;
+        padding: 12px 14px 12px 42px !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        color: #0f172a !important;
+        background-color: #ffffff !important;
+        box-shadow: none !important;
+        min-height: 52px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .ts-control:focus, .ts-wrapper.focus .ts-control {
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
+    }
+    .ts-dropdown {
+        border-radius: 14px !important;
+        border: 1.5px solid #e2e8f0 !important;
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12) !important;
+        padding: 6px !important;
+        z-index: 1050 !important;
+    }
+    .ts-dropdown .option {
+        padding: 10px 14px !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+    }
+    .ts-dropdown .active {
+        background-color: #eff6ff !important;
+        color: #2563eb !important;
+    }
+
+    /* Icône intégrée dans le champ */
+    .input-icon-absolute {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 5;
+        color: #2563eb;
+        pointer-events: none;
+    }
+
+    /* Séparation propre et élégante de l'icône calendrier et du texte de date */
+    .date-input-wrapper {
+        position: relative;
+        width: 100%;
+    }
+    .date-icon-badge {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 5;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: #2563eb;
+        pointer-events: none;
+    }
+    .date-icon-divider {
+        width: 1.5px;
+        height: 20px;
+        background-color: #cbd5e1;
+        border-radius: 2px;
+        display: inline-block;
+    }
+    .date-input-wrapper .form-control,
+    .date-input-wrapper .flatpickr-input,
+    .travel-date-picker-control {
+        height: 52px !important;
+        min-height: 52px !important;
+        border-radius: 14px !important;
+        border: 1.5px solid #cbd5e1 !important;
+        font-weight: 600 !important;
+        font-size: 0.98rem !important;
+        color: #0f172a !important;
+        padding-left: 56px !important; /* Marge nette séparant l'icône et la date */
+        cursor: pointer !important;
+        background-color: #ffffff !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+    }
+    .date-input-wrapper .flatpickr-input:focus,
+    .date-input-wrapper .form-control:focus,
+    .travel-date-picker-control:focus {
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
+    }
+
+    /* Section Destinations Populaires */
+    .popular-routes-section {
+        padding: 80px 0 60px 0;
+        background: #f8fafc;
+    }
+    .route-card {
+        background: #ffffff;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
+        transition: all 0.25s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .route-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.09);
+        border-color: #93c5fd;
+    }
+
+    /* Section Carrousel Logos Partenaires (Défilement continu sur fond sombre prestigieux) */
+    .partners-carousel-section {
+        background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+        padding: 60px 0 70px 0;
+        border-top: 2px solid #1e293b;
+        overflow: hidden;
+        position: relative;
+    }
+    .partners-carousel-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 700px;
+        height: 200px;
+        background: radial-gradient(circle, rgba(29, 78, 216, 0.25) 0%, transparent 70%);
+        pointer-events: none;
+    }
+    .logo-ticker-wrap {
+        overflow: hidden;
+        position: relative;
+        width: 100%;
+        mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+        padding: 1.25rem 0;
+    }
+    .logo-ticker-track {
+        display: flex;
+        align-items: center;
+        gap: 3.25rem;
+        width: max-content;
+        animation: logoMarqueeScroll 35s linear infinite;
+    }
+    .logo-ticker-track:hover {
+        animation-play-state: paused;
+    }
+    @keyframes logoMarqueeScroll {
+        0% {
+            transform: translateX(0);
+        }
+        100% {
+            transform: translateX(-50%);
+        }
+    }
+    .partner-ticker-item {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 140px;
+        height: 110px;
+        padding: 8px 10px;
+        background: #ffffff;
+        border: 2px solid rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+    .partner-ticker-item:hover {
+        border-color: #3b82f6;
+        transform: translateY(-5px) scale(1.06);
+        box-shadow: 0 16px 36px rgba(37, 99, 235, 0.45);
+    }
+    .partner-ticker-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+        image-rendering: -webkit-optimize-contrast;
+    }
+    .partner-ticker-item-placeholder {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%) !important;
+        border: 2px solid #60a5fa !important;
+        padding: 0 !important;
+        color: #ffffff;
+        font-weight: 900;
+        font-size: 2.2rem;
+        letter-spacing: 0.04em;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+    }
+    .partner-ticker-item-placeholder:hover {
+        border-color: #93c5fd !important;
+        box-shadow: 0 16px 36px rgba(37, 99, 235, 0.55);
+    }
+
+    /* Mobile */
+    @media (max-width: 991.98px) {
+        .hero-title-modern { font-size: 2.2rem; }
+        .hero-subtitle-modern { font-size: 1.05rem; }
+        .search-card-floating { padding: 1.5rem 1.25rem; }
+        .partner-ticker-item {
+            width: 120px;
+            height: 95px;
+            padding: 6px 8px;
+        }
+        .partner-ticker-item-placeholder {
+            font-size: 1.85rem;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Hero Section avec Photographie de Voyage & Calque Sombre -->
-<section class="hero-section">
-    <div class="hero-overlay"></div>
-    <div class="container hero-content">
+<!-- 1. Hero Section avec Carte du Cameroun en arrière-plan -->
+<section class="hero-section-modern">
+    <div class="hero-overlay-map"></div>
+    <div class="container position-relative" style="z-index: 2;">
         <div class="row justify-content-center text-center">
-            <div class="col-lg-10 mb-4">
-                <h1 class="hero-title">Voyagez en toute sérénité.</h1>
-                <p class="lead fw-light mb-0" style="color: rgba(255,255,255,0.92); font-size: 1.25rem; line-height: 1.6;">
-                    Trouvez, comparez et réservez vos billets de bus en quelques secondes auprès des meilleures agences vérifiées du pays.
+            <div class="col-lg-10">
+                
+                <div class="hero-badge-pill">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="15" rx="2"></rect>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                        <circle cx="7" cy="15" r="1.5"></circle>
+                        <circle cx="17" cy="15" r="1.5"></circle>
+                    </svg>
+                    <span>Plateforme Officielle de Réservation Interurbaine au Cameroun</span>
+                </div>
+
+                <h1 class="hero-title-modern">Voyagez à travers le Cameroun en toute sérénité.</h1>
+                
+                <p class="hero-subtitle-modern">
+                    Comparez les horaires en temps réel, choisissez votre compagnie préférée et réservez votre place assise garantie en 3 clics.
                 </p>
+
             </div>
         </div>
-            
+
+        <!-- 2. Cartouche de Recherche Ultra-Moderne avec Recherche Textuelle & Swap -->
         <div class="row justify-content-center">
             <div class="col-lg-11 col-xl-10">
-                <div class="search-box p-3 p-md-4 bg-white rounded-4 shadow-lg text-start" style="transform: translateY(35px); border: 1px solid rgba(0,0,0,0.05);">
-                    <!-- Style Radio buttons pour l'esthétique du billet -->
-                    <div class="d-flex align-items-center gap-4 mb-3 ps-2">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="tripType" id="oneWay" checked style="cursor: pointer;">
-                            <label class="form-check-label fw-semibold text-dark cursor-pointer" for="oneWay" style="cursor: pointer;">
-                                Aller simple
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="tripType" id="roundTrip" disabled>
-                            <label class="form-check-label text-muted" for="roundTrip">
-                                Aller-retour <span class="badge bg-light text-secondary ms-1 border" style="font-size: 0.65rem;">Bientôt</span>
-                            </label>
-                        </div>
-                    </div>
+                <div class="search-card-floating">
                     
-                    <form action="{% url 'travel:search' %}" method="get" class="row g-2 g-md-3 align-items-end">
+                    <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="badge bg-primary text-white rounded-pill px-3 py-1.5 fw-bold small" style="background-color: #1d4ed8 !important;">
+                                Aller simple
+                            </span>
+                            <span class="text-dark small fw-bold d-none d-sm-inline d-flex align-items-center gap-1.5">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-primary">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                                <span>Réservation directe auprès des compagnies agréées</span>
+                            </span>
+                        </div>
+                        <span class="text-dark small fw-bold d-flex align-items-center gap-1">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <span>4.8/5 satisfaction clients</span>
+                        </span>
+                    </div>
+
+                    <form action="{% url 'travel:search' %}" method="get" class="row g-3 align-items-end" id="mainSearchForm">
                         
-                        <div class="col-md-3 position-relative">
-                            <label class="form-label text-muted small fw-bold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">De</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white border-end-0 text-muted ps-3">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        <!-- Ville de départ avec Recherche Textuelle -->
+                        <div class="col-lg-3 col-md-5 position-relative">
+                            <label class="form-label small fw-bold text-dark text-uppercase mb-1" style="font-size: 0.78rem; letter-spacing: 0.05em; color: #0f172a !important;" for="depCitySelect">
+                                Ville de départ <span class="text-danger">*</span>
+                            </label>
+                            <div class="position-relative">
+                                <span class="input-icon-absolute">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-success">
+                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                        <circle cx="12" cy="10" r="3"></circle>
+                                    </svg>
                                 </span>
-                                <select name="departure_city" class="form-select border-start-0 ps-1 fw-semibold text-dark shadow-none" style="height: 52px; border-left: none; cursor: pointer; font-size: 1.05rem;" required>
-                                    <option value="" disabled selected>Ville de départ</option>
+                                <select id="depCitySelect" name="departure_city" placeholder="Rechercher une ville (ex: Douala)" required>
+                                    <option value="">Ville de départ...</option>
                                     {% for city in cities %}
-                                        <option value="{{ city.id }}">{{ city.name }}</option>
+                                        <option value="{{ city.id }}">{{ city.name }}{% if city.region %} ({{ city.region }}){% endif %}</option>
                                     {% endfor %}
                                 </select>
                             </div>
                         </div>
 
-                        <!-- Bouton d'échange de villes (visuel) -->
-                        <div class="col-auto d-none d-md-flex align-items-center justify-content-center p-0" style="width: 0; z-index: 10; margin-left: -18px; margin-right: 18px; margin-bottom: 9px;">
-                            <div class="bg-primary border-0 rounded-circle d-flex align-items-center justify-content-center shadow text-white" style="width: 36px; height: 36px; cursor: pointer; transition: transform 0.2s ease;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="14" x2="21" y2="3"></line><polyline points="8 21 3 21 3 16"></polyline><line x1="20" y1="10" x2="3" y2="21"></line></svg>
-                            </div>
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label text-muted small fw-bold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">À</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white border-end-0 text-muted ps-3">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                                </span>
-                                <select name="arrival_city" class="form-select border-start-0 ps-1 fw-semibold text-dark shadow-none" style="height: 52px; border-left: none; cursor: pointer; font-size: 1.05rem;" required>
-                                    <option value="" disabled selected>Ville d'arrivée</option>
-                                    {% for city in cities %}
-                                        <option value="{{ city.id }}">{{ city.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label text-muted small fw-bold mb-1 text-uppercase" for="travelDateInput" style="letter-spacing: 0.5px; font-size: 0.75rem;">Départ le</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white border-end-0 text-muted ps-3">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                                </span>
-                                <input type="text" id="travelDateInput" name="date" class="form-control border-start-0 ps-1 fw-semibold text-dark shadow-none" placeholder="Sélectionnez une date" readonly style="height: 52px; border-left: none; background: #ffffff; cursor: pointer; font-size: 1.05rem;">
-                            </div>
-                        </div>
-
-                        <div class="col-md-3 mt-3 mt-md-0">
-                            <button type="submit" class="btn btn-brand w-100 fw-bold d-flex align-items-center justify-content-center gap-2 text-uppercase" style="height: 52px; font-size: 1.05rem; letter-spacing: 0.5px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);">
-                                Rechercher
+                        <!-- Bouton interactif Swap (Inverser Départ / Arrivée) -->
+                        <div class="col-lg-1 col-md-2 text-center p-0 d-none d-md-flex justify-content-center align-items-center" style="margin-bottom: 5px;">
+                            <button type="button" class="swap-cities-btn" id="btnSwapCities" title="Inverser les villes" aria-label="Inverser départ et arrivée">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="16 3 21 3 21 8"></polyline>
+                                    <line x1="4" y1="14" x2="21" y2="3"></line>
+                                    <polyline points="8 21 3 21 3 16"></polyline>
+                                    <line x1="20" y1="10" x2="3" y2="21"></line>
+                                </svg>
                             </button>
                         </div>
+
+                        <!-- Ville d'arrivée avec Recherche Textuelle -->
+                        <div class="col-lg-3 col-md-5 position-relative">
+                            <label class="form-label small fw-bold text-dark text-uppercase mb-1" style="font-size: 0.78rem; letter-spacing: 0.05em; color: #0f172a !important;" for="arrCitySelect">
+                                Ville d'arrivée <span class="text-danger">*</span>
+                            </label>
+                            <div class="position-relative">
+                                <span class="input-icon-absolute">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-danger">
+                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                        <circle cx="12" cy="10" r="3"></circle>
+                                    </svg>
+                                </span>
+                                <select id="arrCitySelect" name="arrival_city" placeholder="Rechercher une ville (ex: Yaoundé)" required>
+                                    <option value="">Ville d'arrivée...</option>
+                                    {% for city in cities %}
+                                        <option value="{{ city.id }}">{{ city.name }}{% if city.region %} ({{ city.region }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Date de départ -->
+                        <div class="col-lg-3 col-md-6 position-relative">
+                            <label class="form-label small fw-bold text-dark text-uppercase mb-1" style="font-size: 0.78rem; letter-spacing: 0.05em; color: #0f172a !important;" for="travelDateInput">
+                                Date de voyage
+                            </label>
+                            <div class="date-input-wrapper">
+                                <div class="date-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                    <span class="date-icon-divider"></span>
+                                </div>
+                                <input type="text" id="travelDateInput" name="date" class="form-control bg-white travel-date-picker-control" placeholder="Sélectionnez une date" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Bouton Soumission -->
+                        <div class="col-lg-2 col-md-6">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-2 shadow" style="height: 52px; border-radius: 14px; font-size: 1.05rem; letter-spacing: 0.02em; background-color: #1d4ed8; border-color: #1d4ed8;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <span>Trouver</span>
+                            </button>
+                        </div>
+
                     </form>
+
+                    <!-- Éléments de réassurance sous la recherche -->
+                    <div class="row g-2 mt-3 pt-3 border-top text-muted small text-center text-md-start">
+                        <div class="col-md-4 d-flex align-items-center justify-content-center justify-content-md-start gap-2">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-success flex-shrink-0">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span>Confirmation instantanée par SMS</span>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-center justify-content-center justify-content-md-start gap-2">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-success flex-shrink-0">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span>Paiement sécurisé MTN MoMo & Orange</span>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-center justify-content-center justify-content-md-start gap-2">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-success flex-shrink-0">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span>Billets officiels avec QR Code</span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- 3. Section Trajets Populaires au Cameroun -->
+<section class="popular-routes-section">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-2">
+            <div>
+                <span class="text-primary fw-bold small text-uppercase" style="letter-spacing: 0.05em;">Lignes les plus fréquentées</span>
+                <h2 class="fw-bold text-dark mb-0">Trajets Populaires au Cameroun</h2>
+            </div>
+            <span class="text-muted small">Tarifs direct agence sans surcoût</span>
+        </div>
+
+        <div class="row g-3 g-md-4">
+            
+            <!-- Carte Douala -> Yaoundé -->
+            <div class="col-md-6 col-lg-3">
+                <div class="route-card">
+                    <div>
+                        <span class="badge bg-primary bg-opacity-10 text-primary fw-bold rounded-pill mb-2 px-2.5 py-1 small">Axe Lourd N°3</span>
+                        <h5 class="fw-bold text-dark mb-1">Douala ➔ Yaoundé</h5>
+                        <p class="text-muted small mb-3">Départs fréquents toutes les 30 minutes</p>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted small">À partir de</span>
+                            <strong class="text-primary fs-5">3 500 FCFA</strong>
+                        </div>
+                        <a href="{% url 'travel:search' %}?date={{ today_str }}" class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-2">
+                            Voir les départs
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Carte Yaoundé -> Bafoussam -->
+            <div class="col-md-6 col-lg-3">
+                <div class="route-card">
+                    <div>
+                        <span class="badge bg-success bg-opacity-10 text-success fw-bold rounded-pill mb-2 px-2.5 py-1 small">Région Ouest</span>
+                        <h5 class="fw-bold text-dark mb-1">Yaoundé ➔ Bafoussam</h5>
+                        <p class="text-muted small mb-3">Bus VIP climatisés grand confort</p>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted small">À partir de</span>
+                            <strong class="text-primary fs-5">4 000 FCFA</strong>
+                        </div>
+                        <a href="{% url 'travel:search' %}?date={{ today_str }}" class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-2">
+                            Voir les départs
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Carte Douala -> Kribi -->
+            <div class="col-md-6 col-lg-3">
+                <div class="route-card">
+                    <div>
+                        <span class="badge bg-warning bg-opacity-15 text-dark fw-bold rounded-pill mb-2 px-2.5 py-1 small">Côte Atlantique</span>
+                        <h5 class="fw-bold text-dark mb-1">Douala ➔ Kribi</h5>
+                        <p class="text-muted small mb-3">Trajet balnéaire rapide et fluide</p>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted small">À partir de</span>
+                            <strong class="text-primary fs-5">3 000 FCFA</strong>
+                        </div>
+                        <a href="{% url 'travel:search' %}?date={{ today_str }}" class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-2">
+                            Voir les départs
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Carte Yaoundé -> Ngaoundéré -->
+            <div class="col-md-6 col-lg-3">
+                <div class="route-card">
+                    <div>
+                        <span class="badge bg-info bg-opacity-10 text-info fw-bold rounded-pill mb-2 px-2.5 py-1 small">Grand Nord</span>
+                        <h5 class="fw-bold text-dark mb-1">Yaoundé ➔ Ngaoundéré</h5>
+                        <p class="text-muted small mb-3">Départs de nuit et couchettes</p>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted small">À partir de</span>
+                            <strong class="text-primary fs-5">8 500 FCFA</strong>
+                        </div>
+                        <a href="{% url 'travel:search' %}?date={{ today_str }}" class="btn btn-outline-primary btn-sm rounded-pill w-100 fw-bold py-2">
+                            Voir les départs
+                        </a>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </section>
 
-<!-- Features Section avec Icônes Vectorielles SVG et Typographie Améliorée -->
-<section class="features-section">
-    <div class="container">
+<!-- 5. Features Section Réassurance -->
+<section class="py-5 bg-white">
+    <div class="container py-4">
         <div class="text-center mb-5">
-            <h2 class="fw-bold mb-2" style="color: #0f172a; font-size: 2.2rem;">Pourquoi choisir EasyTravel ?</h2>
-            <p class="text-secondary fs-6 mb-0">L'expérience de réservation de transport interurbain repensée pour vous.</p>
+            <h2 class="fw-bold text-dark mb-2">Pourquoi réserver sur EasyTravel ?</h2>
+            <p class="text-muted fs-6 mb-0">La façon la plus simple et sécurisée de voyager en bus au Cameroun.</p>
         </div>
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="feature-card h-100">
-                    <div class="feature-icon-wrapper">
+                <div class="p-4 rounded-4 bg-light border text-center h-100">
+                    <div class="mb-3 d-inline-flex p-3 rounded-circle bg-primary bg-opacity-10 text-primary">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                         </svg>
                     </div>
-                    <h5 class="fw-bold text-dark mb-2">Réservation instantanée</h5>
-                    <p class="text-secondary fs-6 mb-0" style="line-height: 1.55;">
-                        Comparez les horaires et réservez en 3 clics avec confirmation immédiate de votre place assise.
-                    </p>
+                    <h5 class="fw-bold text-dark mb-2">Réservation en 3 Clics</h5>
+                    <p class="text-muted small mb-0">Plus besoin de vous déplacer au quai des heures avant. Réservez votre place depuis votre canapé.</p>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="feature-card h-100">
-                    <div class="feature-icon-wrapper">
+                <div class="p-4 rounded-4 bg-light border text-center h-100">
+                    <div class="mb-3 d-inline-flex p-3 rounded-circle bg-success bg-opacity-10 text-success">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                             <polyline points="9 12 11 14 15 10"></polyline>
                         </svg>
                     </div>
-                    <h5 class="fw-bold text-dark mb-2">Agences Agréées & Sécurisées</h5>
-                    <p class="text-secondary fs-6 mb-0" style="line-height: 1.55;">
-                        Toutes nos compagnies partenaires sont agréées par le Ministère des Transports avec véhicules inspectés.
-                    </p>
+                    <h5 class="fw-bold text-dark mb-2">Paiement 100% Sécurisé</h5>
+                    <p class="text-muted small mb-0">Réglez directement via votre compte Orange Money ou MTN Mobile Money en toute sérénité.</p>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="feature-card h-100">
-                    <div class="feature-icon-wrapper">
+                <div class="p-4 rounded-4 bg-light border text-center h-100">
+                    <div class="mb-3 d-inline-flex p-3 rounded-circle bg-warning bg-opacity-10 text-dark">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                            <line x1="2" y1="10" x2="22" y2="10"></line>
-                            <line x1="7" y1="15" x2="7.01" y2="15"></line>
-                            <line x1="11" y1="15" x2="13" y2="15"></line>
+                            <circle cx="12" cy="12" r="3"></circle>
                         </svg>
                     </div>
-                    <h5 class="fw-bold text-dark mb-2">E-Billet & QR Code Sécurisé</h5>
-                    <p class="text-secondary fs-6 mb-0" style="line-height: 1.55;">
-                        Accédez à votre titre de transport directement sur votre smartphone ou imprimez-le pour un embarquement sans attente.
-                    </p>
+                    <h5 class="fw-bold text-dark mb-2">E-Billet & Embarquement Rapide</h5>
+                    <p class="text-muted small mb-0">Présentez simplement le QR Code officiel sur votre téléphone pour embarquer immédiatement.</p>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<!-- 5. Section Compagnies de Transport Partenaires (Défilement continu de logos sur fond sombre prestigieux) -->
+{% if partner_agencies %}
+<section class="partners-carousel-section">
+    <div class="container text-center mb-4 position-relative" style="z-index: 2;">
+        <span class="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-30 rounded-pill px-3 py-1.5 fw-bold text-uppercase mb-2" style="letter-spacing: 0.08em; font-size: 0.75rem;">
+            Réseau Officiel Certifié
+        </span>
+        <h3 class="fw-bold text-white mt-2 mb-1" style="font-size: 1.85rem; letter-spacing: -0.01em;">Compagnies Agréées Partenaires</h3>
+        <p class="text-light opacity-75 small mb-0">Billetterie directe auprès des agences officielles enregistrées au Cameroun</p>
+    </div>
+
+    <div class="logo-ticker-wrap">
+        <div class="logo-ticker-track">
+            {% for i in "1234" %}
+                {% for agency in partner_agencies %}
+                    {% if agency.logo %}
+                    <div class="partner-ticker-item" title="{{ agency.name }}">
+                        <img src="{{ agency.logo.url }}" alt="{{ agency.name }}" class="partner-ticker-img">
+                    </div>
+                    {% else %}
+                    <div class="partner-ticker-item partner-ticker-item-placeholder" title="{{ agency.name }}">
+                        <span>{{ agency.name|slice:":2"|upper }}</span>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
+<!-- Tom Select CDN Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        if (typeof flatpickr !== 'undefined') {
-            flatpickr("#travelDateInput", {
-                locale: "fr",
-                dateFormat: "Y-m-d",
-                altInput: true,
-                altFormat: "d M Y",
-                altInputClass: "form-control border-start-0 ps-1 fw-semibold text-dark shadow-none bg-white",
-                minDate: "today",
-                defaultDate: "today",
-                placeholder: "Sélectionnez une date",
-                disableMobile: true
-            });
-        }
-    });
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Initialisation Flatpickr Date
+    if (typeof flatpickr !== 'undefined') {
+        flatpickr("#travelDateInput", {
+            locale: "fr",
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d M Y",
+            altInputClass: "form-control bg-white travel-date-picker-control",
+            minDate: "today",
+            defaultDate: "today",
+            placeholder: "Sélectionnez une date",
+            disableMobile: true
+        });
+    }
+
+    // 2. Initialisation Tom Select (Recherche textuelle dans les sélecteurs de ville)
+    let tomDep, tomArr;
+
+    const depEl = document.getElementById('depCitySelect');
+    if (depEl && typeof TomSelect !== 'undefined') {
+        tomDep = new TomSelect('#depCitySelect', {
+            create: false,
+            placeholder: "Ville de départ...",
+            sortField: { field: "text", direction: "asc" }
+        });
+    }
+
+    const arrEl = document.getElementById('arrCitySelect');
+    if (arrEl && typeof TomSelect !== 'undefined') {
+        tomArr = new TomSelect('#arrCitySelect', {
+            create: false,
+            placeholder: "Ville d'arrivée...",
+            sortField: { field: "text", direction: "asc" }
+        });
+    }
+
+    // 3. Bouton Swap (Inverser Départ et Arrivée)
+    const btnSwap = document.getElementById('btnSwapCities');
+    if (btnSwap && tomDep && tomArr) {
+        btnSwap.addEventListener('click', function() {
+            const valDep = tomDep.getValue();
+            const valArr = tomArr.getValue();
+            
+            tomDep.setValue(valArr);
+            tomArr.setValue(valDep);
+        });
+    }
+});
 </script>
 {% endblock %}
