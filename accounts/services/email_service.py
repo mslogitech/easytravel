@@ -1,5 +1,4 @@
 import logging
-import threading
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -8,14 +7,14 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from accounts.models import User
+from core.tasks import dispatch_async_task
 
 from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
 def send_mail_async(*args, **kwargs):
-    thread = threading.Thread(target=send_mail, args=args, kwargs=kwargs)
-    thread.start()
+    dispatch_async_task(send_mail, *args, **kwargs)
 
 
 

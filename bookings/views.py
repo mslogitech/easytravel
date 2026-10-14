@@ -19,8 +19,11 @@ from io import BytesIO
 from django.contrib import messages
 from django.conf import settings
 from django.db import transaction
+from core.tasks import dispatch_async_task
+from core.ratelimit import ratelimit
 
 
+@ratelimit(max_requests=30, window_seconds=60)
 def book_departure(request, departure_id):
     """
     Vue de réservation d'un voyage :
@@ -161,10 +164,10 @@ def book_departure(request, departure_id):
                         is_active=True
                     )
                     
-                    # Remplacement Email -> WhatsApp pour l'activation
+                    # Remplacement Email -> WhatsApp pour l'activation (en tâche asynchrone supervisée)
                     try:
                         from accounts.services.whatsapp_service import send_whatsapp_activation
-                        send_whatsapp_activation(user, request)
+                        dispatch_async_task(send_whatsapp_activation, user, request)
                     except Exception as e:
                         print("Erreur envoi whatsapp:", e)
                         pass
@@ -243,12 +246,7 @@ def book_departure(request, departure_id):
                     
                     try:
                         from accounts.services.email_service import send_ticket_confirmation_email
-                        email_t = threading.Thread(
-                            target=send_ticket_confirmation_email,
-                            args=(request, booking),
-                            daemon=True
-                        )
-                        email_t.start()
+                        dispatch_async_task(send_ticket_confirmation_email, request, booking)
                     except Exception:
                         pass
                         

@@ -27,7 +27,9 @@ from .validators import (
 from .services.whatsapp_service import send_whatsapp_activation
 from .services.email_service import verify_activation_token
 from bookings.models import Booking
+from core.ratelimit import ratelimit
 
+@ratelimit(max_requests=15, window_seconds=60, block_message="Trop de tentatives de connexion. Veuillez patienter une minute.")
 def traveler_login(request):
     next_url = get_safe_next_url(request)
     

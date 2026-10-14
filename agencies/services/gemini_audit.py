@@ -2,7 +2,7 @@ import os
 import re
 import json
 import logging
-import threading
+from core.tasks import dispatch_async_task
 from datetime import datetime, timedelta
 from urllib import request as url_request
 from urllib.error import URLError
@@ -36,11 +36,9 @@ class GeminiAuditService:
     def run_audit_async(self, callback=None):
         """
         Déclenche l'audit en arrière-plan sans bloquer la requête HTTP utilisateur.
+        Utilise le pool de threads supervisé de EasyTravel.
         """
-        thread = threading.Thread(target=self._run_audit_worker, args=(callback,))
-        thread.daemon = True
-        thread.start()
-        return thread
+        return dispatch_async_task(self._run_audit_worker, callback)
 
     def _run_audit_worker(self, callback=None):
         try:

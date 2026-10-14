@@ -242,4 +242,13 @@ PAYMENT_SIMULATION_MODE = DEBUG and os.getenv('PAYMENT_SIMULATION_MODE', 'False'
 # --- FEES & COMMISSIONS ---
 PLATFORM_FEE_PERCENTAGE = 0.03
 
+# --- CACHE & RATE LIMITING ---
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'easytravel-cache',
+    }
+}
+
+
 

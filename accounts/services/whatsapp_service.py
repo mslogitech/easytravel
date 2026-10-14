@@ -17,7 +17,10 @@ def send_whatsapp_message(to_phone, message_text):
     logger.info(f"TO: {to_phone}")
     logger.info(f"MESSAGE: \n{message_text}")
     logger.info(f"---------------------")
-    print(f"[WHATSAPP SIMULATION] Message envoyé à {to_phone}: {message_text}")
+    try:
+        print(f"[WHATSAPP SIMULATION] Message envoyé à {to_phone}: {message_text}")
+    except UnicodeEncodeError:
+        print(f"[WHATSAPP SIMULATION] Message envoyé à {to_phone}: {message_text.encode('ascii', errors='replace').decode('ascii')}")
     
     # Implémentation réelle Meta API (décommenter quand vous aurez les clés)
     """

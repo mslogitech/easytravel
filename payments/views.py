@@ -18,12 +18,15 @@ from django.conf import settings
 from django.utils import timezone
 
 from bookings.models import Booking, BookingCart
+from core.tasks import dispatch_async_task
+from core.ratelimit import ratelimit
 from .models import PaymentTransaction
 from .services.saspay import SasPayService
 
 logger = logging.getLogger(__name__)
 
 
+@ratelimit(max_requests=20, window_seconds=60)
 def initiate_booking_payment(request, booking_id):
     """
     Initiates payment for a booking.
@@ -88,6 +91,7 @@ def initiate_booking_payment(request, booking_id):
         return redirect('travel:home')
 
 
+@ratelimit(max_requests=20, window_seconds=60)
 def initiate_cart_payment(request, cart_id):
     """
     Initiates payment for an entire BookingCart.
@@ -195,6 +199,7 @@ def simulation_checkout(request, booking_id):
 
 @login_required
 @require_POST
+@ratelimit(max_requests=10, window_seconds=60)
 def pay_with_wallet(request, booking_id):
     """
     Règle une réservation en débitant directement le solde du portefeuille de l'utilisateur (wallet_balance).
@@ -281,16 +286,11 @@ def pay_with_wallet(request, booking_id):
                 booking.paid_at = timezone.now()
                 booking.save()
 
-        # Envoi de l'email officiel avec QR Code (en arrière-plan non bloquant)
+        # Envoi de l'email officiel avec QR Code (en arrière-plan supervisé)
         try:
-            email_thread = threading.Thread(
-                target=send_ticket_confirmation_email,
-                args=(request, booking),
-                daemon=True
-            )
-            email_thread.start()
+            dispatch_async_task(send_ticket_confirmation_email, request, booking)
         except Exception as e:
-            logger.warning(f"Could not dispatch ticket confirmation email thread: {e}")
+            logger.warning(f"Could not dispatch ticket confirmation email task: {e}")
 
         messages.success(
             request,
@@ -375,10 +375,10 @@ def simulation_process(request, booking_id):
                 booking.paid_at = timezone.now()
                 booking.save()
 
-        # Send ticket confirmation email
+        # Send ticket confirmation email in background
         try:
             from accounts.services.email_service import send_ticket_confirmation_email
-            send_ticket_confirmation_email(request, booking)
+            dispatch_async_task(send_ticket_confirmation_email, request, booking)
         except Exception as e:
             logger.warning(f"Could not send ticket confirmation email: {e}")
 
@@ -468,9 +468,9 @@ def saspay_notification(request):
             from accounts.services.email_service import send_ticket_confirmation_email
             if hasattr(booking, 'bookings'):
                 for b in booking.bookings.all():
-                    send_ticket_confirmation_email(request, b)
+                    dispatch_async_task(send_ticket_confirmation_email, request, b)
             else:
-                send_ticket_confirmation_email(request, booking)
+                dispatch_async_task(send_ticket_confirmation_email, request, booking)
         except Exception as e:
             logger.warning(f"Could not send ticket confirmation email during IPN: {e}")
 

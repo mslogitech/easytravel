@@ -18,8 +18,8 @@ class BookingModelTest(TestCase):
         self.departure = Departure.objects.create(
             agency=self.agency,
             line=self.line,
-            date=date.today(),
-            time=time(8, 30),
+            date=date.today() + timedelta(days=2),
+            time=time(14, 0),
             available_capacity=30
         )
 
