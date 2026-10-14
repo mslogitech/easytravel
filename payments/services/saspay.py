@@ -210,11 +210,31 @@ class SasPayService:
 
             expected_amount = float(obj.total_amount)
             
+            # Traçabilité immuable dans PaymentTransaction
+            from payments.models import PaymentTransaction
+            pt, _ = PaymentTransaction.objects.get_or_create(
+                transaction_id=transaction_id,
+                defaults={
+                    'booking': obj if not is_cart else None,
+                    'cart': obj if is_cart else None,
+                    'user': obj.user,
+                    'provider': 'saspay',
+                    'amount': obj.total_amount,
+                    'currency': 'XAF',
+                }
+            )
+            pt.raw_response = data
+            pt.provider_reference = str(data.get('id') or data.get('reference') or '')
+            pt.payment_method = str(operator)
+            
             if status == 'SUCCESS':
                 if pay_amount < expected_amount:
-                    # Allow slight variations or handle strictly? We'll log it.
                     logger.warning(f"Montant inférieur {pay_amount} < {expected_amount}")
                     
+                pt.status = 'success'
+                pt.completed_at = timezone.now()
+                pt.save()
+
                 obj.payment_status = 'paid'
                 if not is_cart:
                     obj.payment_method = 'online'
@@ -235,10 +255,16 @@ class SasPayService:
                 return True, obj, "Paiement validé avec succès (SasPay)."
                 
             elif status in ('FAILED', 'CANCELLED'):
+                pt.status = 'failed' if status == 'FAILED' else 'cancelled'
+                pt.error_message = f"Statut retourné par SasPay : {status}"
+                pt.save()
+
                 obj.payment_status = 'failed'
                 obj.save(update_fields=['payment_status'])
                 if is_cart:
                     obj.bookings.update(payment_status='failed')
                 return False, obj, f"Paiement échoué ({status})."
+            else:
+                pt.save()
                 
         return False, obj, f"Statut ignoré ({status})."

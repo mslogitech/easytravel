@@ -258,3 +258,28 @@ class CinetPayPaymentTests(TestCase):
         expected_url = reverse('bookings:confirmation', kwargs={'reference': self.booking.reference})
         self.assertEqual(response.url, expected_url)
 
+    @override_settings(PAYMENT_SIMULATION_MODE=True)
+    def test_payment_transaction_model_and_simulation(self):
+        """Verifies that PaymentTransaction model correctly stores payment lifecycle."""
+        from payments.models import PaymentTransaction
+        
+        self.client.force_login(self.user)
+        url = reverse('payments:simulation_process', kwargs={'booking_id': self.booking.id})
+        
+        # Test simulation success
+        response = self.client.post(url, {
+            'action': 'success',
+            'payment_method': 'orange_money',
+            'phone': '699001122'
+        })
+        self.assertEqual(response.status_code, 302)
+        
+        tx = PaymentTransaction.objects.filter(booking=self.booking, status='success').first()
+        self.assertIsNotNone(tx)
+        self.assertEqual(tx.provider, 'simulation')
+        self.assertEqual(tx.payment_method, 'orange_money')
+        self.assertEqual(tx.amount, self.booking.total_amount)
+        self.assertEqual(tx.currency, 'XAF')
+        self.assertIsNotNone(tx.completed_at)
+        self.assertIn('SIMULATION', str(tx).upper())
+

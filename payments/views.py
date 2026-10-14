@@ -18,6 +18,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from bookings.models import Booking, BookingCart
+from .models import PaymentTransaction
 from .services.saspay import SasPayService
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,20 @@ def initiate_booking_payment(request, booking_id):
         return_url=return_url,
         notify_url=notify_url,
     )
+
+    if tx_id:
+        PaymentTransaction.objects.update_or_create(
+            transaction_id=tx_id,
+            defaults={
+                'booking': booking,
+                'user': booking.user or (request.user if request.user.is_authenticated else None),
+                'provider': 'saspay',
+                'amount': booking.total_amount,
+                'currency': 'XAF',
+                'status': 'pending',
+                'raw_response': result if isinstance(result, dict) else {},
+            }
+        )
 
     if success:
         return redirect(result['payment_url'])
@@ -117,6 +132,20 @@ def initiate_cart_payment(request, cart_id):
         return_url=return_url,
         notify_url=notify_url,
     )
+
+    if tx_id:
+        PaymentTransaction.objects.update_or_create(
+            transaction_id=tx_id,
+            defaults={
+                'cart': cart,
+                'user': cart.user or (request.user if request.user.is_authenticated else None),
+                'provider': 'saspay',
+                'amount': cart.total_amount,
+                'currency': 'XAF',
+                'status': 'pending',
+                'raw_response': result if isinstance(result, dict) else {},
+            }
+        )
 
     if success and result.get('payment_url'):
         request.session['current_payment_tx_id'] = tx_id
@@ -216,6 +245,20 @@ def pay_with_wallet(request, booking_id):
 
             tx_id = f"WLT-{booking.id}-{uuid.uuid4().hex[:8].upper()}"
 
+            PaymentTransaction.objects.create(
+                transaction_id=tx_id,
+                booking=booking if not booking.cart else None,
+                cart=booking.cart,
+                user=db_user,
+                provider='wallet',
+                payment_method='wallet',
+                amount=required_amount,
+                currency='XAF',
+                status='success',
+                completed_at=timezone.now(),
+                raw_response={'description': f"Règlement Portefeuille pour {booking.reference}"}
+            )
+
             if booking.cart:
                 cart_bookings = Booking.objects.filter(cart=booking.cart)
                 for b in cart_bookings:
@@ -296,6 +339,20 @@ def simulation_process(request, booking_id):
         
         from django.db import transaction
         with transaction.atomic():
+            PaymentTransaction.objects.create(
+                transaction_id=tx_id,
+                booking=booking if not booking.cart else None,
+                cart=booking.cart,
+                user=booking.user,
+                provider='simulation',
+                payment_method=payment_method,
+                amount=booking.cart.total_amount if booking.cart else booking.total_amount,
+                currency='XAF',
+                status='success',
+                completed_at=timezone.now(),
+                raw_response={'operator': operator_name, 'phone': phone, 'action': 'success'}
+            )
+
             if booking.cart:
                 cart_bookings = Booking.objects.filter(cart=booking.cart)
                 for b in cart_bookings:
@@ -333,8 +390,22 @@ def simulation_process(request, booking_id):
         return redirect('bookings:confirmation', reference=booking.reference)
 
     else:
+        tx_id = f"SIM-TX-{booking.id}-{uuid.uuid4().hex[:8].upper()}-FAIL"
         from django.db import transaction
         with transaction.atomic():
+            PaymentTransaction.objects.create(
+                transaction_id=tx_id,
+                booking=booking if not booking.cart else None,
+                cart=booking.cart,
+                user=booking.user,
+                provider='simulation',
+                payment_method=payment_method,
+                amount=booking.cart.total_amount if booking.cart else booking.total_amount,
+                currency='XAF',
+                status='failed',
+                raw_response={'operator': operator_name, 'phone': phone, 'action': 'failed'}
+            )
+
             if booking.cart:
                 Booking.objects.filter(cart=booking.cart).update(payment_status='failed')
                 booking.cart.payment_status = 'failed'
